@@ -8,8 +8,11 @@ namespace TimeSeries
 	{
 		private static void Main(string[] args)
 		{
-			using (var tss = new TimeSeriesStorage(StorageEnvironmentOptions.CreateMemoryOnly()))
+			var storageEnvironmentOptions = StorageEnvironmentOptions.CreateMemoryOnly();
+			//storageEnvironmentOptions.ManualFlushing = true;
+			using (var tss = new TimeSeriesStorage(storageEnvironmentOptions))
 			{
+				Console.WriteLine("running");
 				var sp = Stopwatch.StartNew();
 				
 				var count = 5;
