@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Voron;
 using Voron.Impl;
+using Voron.Trees;
 using Voron.Util.Conversion;
 
 namespace TimeSeries
@@ -101,7 +102,12 @@ namespace TimeSeries
 		public class Writer : IDisposable
 		{
 			private readonly TimeSeriesStorage _storage;
-			private Transaction _tx;
+			private readonly Transaction _tx;
+
+			private readonly byte[] keyBuffer = new byte[8];
+			private readonly byte[] valBuffer = new byte[8];
+
+			private readonly Dictionary<string,Tree> _trees =new Dictionary<string, Tree>();
 
 			public Writer(TimeSeriesStorage storage)
 			{
@@ -111,11 +117,16 @@ namespace TimeSeries
 
 			public void Append(string treeName, DateTime time, double value)
 			{
-				var tree = _tx.State.GetTree(_tx, treeName);
-				var key = EndianBitConverter.Big.GetBytes(time.Ticks);
-				var valueAsBytes = EndianBitConverter.Big.GetBytes(value);
+				Tree tree;
+				if (_trees.TryGetValue(treeName, out tree) == false)
+				{
+					tree = _tx.State.GetTree(_tx, treeName);
+					_trees[treeName] = tree;
+				}
+				EndianBitConverter.Big.CopyBytes(time.Ticks, keyBuffer, 0);
+				EndianBitConverter.Big.CopyBytes(value, valBuffer, 0);
 
-				tree.Add(new Slice(key), new MemoryStream(valueAsBytes));
+				tree.Add(new Slice(keyBuffer), valBuffer);
 			}
 
 			public void Dispose()
