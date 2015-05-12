@@ -1,5 +1,9 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Globalization;
+using System.IO;
+using System.IO.Compression;
+using System.Net;
 using Voron;
 
 namespace TimeSeries
@@ -8,22 +12,15 @@ namespace TimeSeries
 	{
 		private static void Main(string[] args)
 		{
-			var storageEnvironmentOptions = StorageEnvironmentOptions.ForPath("B2");
+			var storageEnvironmentOptions = StorageEnvironmentOptions.ForPath("R2");
 			//storageEnvironmentOptions.ManualFlushing = true;
 			using (var tss = new TimeSeriesStorage(storageEnvironmentOptions))
 			{
 				Console.WriteLine("running");
 				var sp = Stopwatch.StartNew();
-
-				int txCount = 0;
-				var count = 5;
-				var now = DateTime.Now;
-				count = DoWrites(tss, now, count, ref txCount);
-
+				ImportWikipedia(tss);
 				sp.Stop();
 				Console.WriteLine(sp.Elapsed);
-				Console.WriteLine("Num: {0:#,#}, TxCount: {1:#,#}", count, txCount);
-				Console.WriteLine(Math.Round((double)count/ sp.ElapsedMilliseconds, 4));
 
 				/*using (var r = tss.CreateReader())
 				{
@@ -35,27 +32,55 @@ namespace TimeSeries
 			}
 		}
 
-		private static int DoWrites(TimeSeriesStorage tss, DateTime now, int count, ref int txCount)
+		private static void ImportWikipedia(TimeSeriesStorage tss)
 		{
-			for (int j = 0; j < 20*1000; j++)
+			var dir = @"E:\TimeSeries\20150401\Compressed";
+			var path = Path.Combine(dir, "pagecounts-20150401-000000.gz");
+
+			using (var stream = File.OpenRead(path))
+			using (var uncompressed = new GZipStream(stream, CompressionMode.Decompress))
 			{
-				using (var w = tss.CreateWriter())
+				int lines = 0;
+				var writer = tss.CreateWriter();
+				try
 				{
-					for (int i = 0; i < 100; i++)
+					using (var reader = new StreamReader(uncompressed))
 					{
-						now = now.AddMinutes(1);
-						w.Append("one", now, i);
-						w.Append("two", now, i);
-						w.Append("three", now, i);
-						w.Append("four", now, i);
-						w.Append("five", now, i);
-						count += 5;
+						string line;
+						while ((line = reader.ReadLine()) != null)
+						{
+							if (string.IsNullOrEmpty(line))
+								continue;
+
+							var items = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+							if (items.Length < 4)
+								continue;
+
+							var entryName = items[0] + "/" + WebUtility.UrlDecode(items[1]);
+							if (entryName.Length > 512)
+								continue;
+
+							var time = DateTime.ParseExact("20150401-000000", "yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+
+							writer.Append("views/" + entryName, time, int.Parse(items[2]));
+							writer.Append("sizes/" + entryName, time, double.Parse(items[3]));
+
+							if (lines++%1000 == 0)
+							{
+								writer.Commit();
+								writer.Dispose();
+								writer = tss.CreateWriter();
+							}
+
+						}
 					}
-					txCount++;
-					w.Commit();
+				}
+				finally
+				{
+					writer.Dispose();
 				}
 			}
-			return count;
 		}
 	}
 }

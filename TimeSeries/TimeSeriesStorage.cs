@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using Voron;
 using Voron.Impl;
 using Voron.Trees;
@@ -21,6 +22,7 @@ namespace TimeSeries
 			using (var tx = _storageEnvironment.NewTransaction(TransactionFlags.ReadWrite))
 			{
 				var metadata = _storageEnvironment.CreateTree(tx, "$metadata");
+				_storageEnvironment.CreateTree(tx, "data", keysPrefixing: true);
 				var result = metadata.Read("id");
 				if (result == null) // new db
 				{
@@ -98,35 +100,32 @@ namespace TimeSeries
 			}
 		}
 
-
 		public class Writer : IDisposable
 		{
 			private readonly TimeSeriesStorage _storage;
 			private readonly Transaction _tx;
 
-			private readonly byte[] keyBuffer = new byte[8];
+			private readonly byte[] keyBuffer = new byte[1024];
 			private readonly byte[] valBuffer = new byte[8];
-
-			private readonly Dictionary<string,Tree> _trees =new Dictionary<string, Tree>();
+			private readonly Tree _tree;
 
 			public Writer(TimeSeriesStorage storage)
 			{
 				_storage = storage;
 				_tx = _storage._storageEnvironment.NewTransaction(TransactionFlags.ReadWrite);
+				_tree = _tx.State.GetTree(_tx, "data");
 			}
 
-			public void Append(string treeName, DateTime time, double value)
+			public void Append(string key, DateTime time, double value)
 			{
-				Tree tree;
-				if (_trees.TryGetValue(treeName, out tree) == false)
-				{
-					tree = _tx.State.GetTree(_tx, treeName);
-					_trees[treeName] = tree;
-				}
-				EndianBitConverter.Big.CopyBytes(time.Ticks, keyBuffer, 0);
+				var sliceWriter = new SliceWriter(keyBuffer);
+				sliceWriter.WriteString(key);
+				sliceWriter.WriteBigEndian(time.Ticks);
+				var keySlice = sliceWriter.CreateSlice();
+
 				EndianBitConverter.Big.CopyBytes(value, valBuffer, 0);
 
-				tree.Add(new Slice(keyBuffer), valBuffer);
+				_tree.Add(keySlice, valBuffer);
 			}
 
 			public void Dispose()
