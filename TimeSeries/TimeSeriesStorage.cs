@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Voron;
+using Voron.Debugging;
 using Voron.Impl;
 using Voron.Trees;
 using Voron.Util.Conversion;
@@ -34,7 +35,14 @@ namespace TimeSeries
 					int used;
 					Id = new Guid(result.Reader.ReadBytes(16, out used));
 				}
+
+				tx.Commit();
 			}
+		}
+
+		public StorageEnvironment StorageEnvironment
+		{
+			get { return _storageEnvironment; }
 		}
 
 		public Reader CreateReader()
@@ -58,11 +66,23 @@ namespace TimeSeries
 		{
 			private readonly TimeSeriesStorage _storage;
 			private readonly Transaction _tx;
+			private Tree _tree;
 
-			public Reader(TimeSeriesStorage storage)
+			public unsafe Reader(TimeSeriesStorage storage)
 			{
 				_storage = storage;
 				_tx = _storage._storageEnvironment.NewTransaction(TransactionFlags.Read);
+				_tree = _tx.State.GetTree(_tx, "data");
+
+				NodeHeader* node;
+				Lazy<Cursor> lazy;
+				var a = _tree.FindPageFor(new SliceWriter(512).WriteString("views/en/AMD_Radeon_Rx_300_Series").CreateSlice(), out node, out lazy);
+
+				DebugStuff.DumpHumanReadable(_tx, a.PageNumber, "PageNumber");
+
+				DebugStuff.DumpHumanReadable(_tx, a.Upper, "Upper");
+
+				//
 			}
 
 			public IEnumerable<Point> Query(string treeName, DateTime start, DateTime end)
