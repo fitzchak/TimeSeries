@@ -41,7 +41,6 @@ namespace TimeSeries
 							"SizeUsed",
 							"NumberOfEntries",
 							"Level",
-							"Key",
 						}));
 						GetSpace(readTree.State.RootPageNumber, tx, 0, stats, writer);
 						writer.Flush();
@@ -93,16 +92,6 @@ namespace TimeSeries
 			current.Used+= readOnlyPage.SizeUsed;
 			current.NumberOfPages++;
 			current.NumberOfEntries += readOnlyPage.NumberOfEntries;
-			string keysSummary = "";
-			for (int i = 0; i < readOnlyPage.NumberOfEntries; i++)
-			{
-				var key = readOnlyPage.GetNodeKey(i).ToString();
-				var items = key.Split(new[] {"/"}, StringSplitOptions.RemoveEmptyEntries);
-				if (items.Length > 0)
-				{
-					keysSummary += items[0] + ",";
-				}
-			}
 			writer.WriteLine(string.Join(",", new object[]
 			{
 				readOnlyPage.PageNumber,
@@ -110,7 +99,6 @@ namespace TimeSeries
 				readOnlyPage.CalcSizeUsed(),
 				readOnlyPage.NumberOfEntries,
 				current.Level,
-				keysSummary,
 			}));
 			if (readOnlyPage.IsBranch)
 			{
