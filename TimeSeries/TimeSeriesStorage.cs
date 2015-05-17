@@ -68,21 +68,11 @@ namespace TimeSeries
 			private readonly Transaction _tx;
 			private Tree _tree;
 
-			public unsafe Reader(TimeSeriesStorage storage)
+			public Reader(TimeSeriesStorage storage)
 			{
 				_storage = storage;
 				_tx = _storage._storageEnvironment.NewTransaction(TransactionFlags.Read);
 				_tree = _tx.State.GetTree(_tx, "data");
-
-				NodeHeader* node;
-				Lazy<Cursor> lazy;
-				var a = _tree.FindPageFor(new SliceWriter(512).WriteString("views/en/AMD_Radeon_Rx_300_Series").CreateSlice(), out node, out lazy);
-
-				DebugStuff.DumpHumanReadable(_tx, a.PageNumber, "PageNumber");
-
-				DebugStuff.DumpHumanReadable(_tx, a.Upper, "Upper");
-
-				//
 			}
 
 			public IEnumerable<Point> Query(string treeName, DateTime start, DateTime end)
