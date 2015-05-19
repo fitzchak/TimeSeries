@@ -17,7 +17,7 @@ namespace TimeSeries
 	{
 		private static void Main(string[] args)
 		{
-			var storageEnvironmentOptions = StorageEnvironmentOptions.ForPath("R201");
+			var storageEnvironmentOptions = StorageEnvironmentOptions.ForPath("R205");
 			//storageEnvironmentOptions.ManualFlushing = true;
 			using (var tss = new TimeSeriesStorage(storageEnvironmentOptions))
 			{
@@ -118,7 +118,7 @@ namespace TimeSeries
 		{
 			var dir = @"E:\TimeSeries\20150401\Compressed";
 			var files = Directory.GetFiles(dir, "pagecounts-*.gz", SearchOption.TopDirectoryOnly);
-			for (int fileIndex = 0; fileIndex < files.Length; fileIndex++)
+			for (int fileIndex = 2; fileIndex < files.Length; fileIndex++)
 			{
 				if (fileIndex > 30)
 				{
@@ -157,7 +157,6 @@ namespace TimeSeries
 
 								if (lines++%1000 == 0)
 								{
-									Console.WriteLine(lines);
 									writer.Commit();
 									writer.Dispose();
 									writer = tss.CreateWriter();

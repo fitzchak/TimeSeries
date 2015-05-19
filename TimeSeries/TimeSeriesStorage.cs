@@ -19,6 +19,7 @@ namespace TimeSeries
 		public TimeSeriesStorage(StorageEnvironmentOptions options)
 		{
 			_storageEnvironment = new StorageEnvironment(options);
+			_storageEnvironment.DebugJournal = new DebugJournal("debug_journal_test", _storageEnvironment, true);
 
 			using (var tx = _storageEnvironment.NewTransaction(TransactionFlags.ReadWrite))
 			{
@@ -109,46 +110,79 @@ namespace TimeSeries
 					_tx.Dispose();
 			}
 		}
-
 		public class Writer : IDisposable
 		{
 			private readonly TimeSeriesStorage _storage;
-			private readonly Transaction _tx;
-
-			private readonly byte[] keyBuffer = new byte[1024];
-			private readonly byte[] valBuffer = new byte[8];
-			private readonly Tree _tree;
+			private WriteBatch _wb=new WriteBatch();
 
 			public Writer(TimeSeriesStorage storage)
 			{
 				_storage = storage;
-				_tx = _storage._storageEnvironment.NewTransaction(TransactionFlags.ReadWrite);
-				_tree = _tx.State.GetTree(_tx, "data");
 			}
 
 			public void Append(string key, DateTime time, double value)
 			{
-				var sliceWriter = new SliceWriter(keyBuffer);
+				var sliceWriter = new SliceWriter(1024);
 				sliceWriter.WriteString(key);
 				sliceWriter.WriteBigEndian(time.Ticks);
 				var keySlice = sliceWriter.CreateSlice();
 
-				EndianBitConverter.Big.CopyBytes(value, valBuffer, 0);
+				var buffer = new byte[8];
+				EndianBitConverter.Big.CopyBytes(value, buffer, 0);
 
-				_tree.Add(keySlice, valBuffer);
+				_wb.Add(keySlice, new Slice(buffer), "data");
 			}
 
 			public void Dispose()
 			{
-				if (_tx != null)
-					_tx.Dispose();
 			}
 
 			public void Commit()
 			{
-				_tx.Commit();
+				_storage.StorageEnvironment.Writer.Write(_wb);
 			}
 		}
+
+
+		//public class Writer : IDisposable
+		//{
+		//	private readonly TimeSeriesStorage _storage;
+		//	private readonly Transaction _tx;
+
+		//	private readonly byte[] keyBuffer = new byte[1024];
+		//	private readonly byte[] valBuffer = new byte[8];
+		//	private readonly Tree _tree;
+
+		//	public Writer(TimeSeriesStorage storage)
+		//	{
+		//		_storage = storage;
+		//		_tx = _storage._storageEnvironment.NewTransaction(TransactionFlags.ReadWrite);
+		//		_tree = _tx.State.GetTree(_tx, "data");
+		//	}
+
+		//	public void Append(string key, DateTime time, double value)
+		//	{
+		//		var sliceWriter = new SliceWriter(keyBuffer);
+		//		sliceWriter.WriteString(key);
+		//		sliceWriter.WriteBigEndian(time.Ticks);
+		//		var keySlice = sliceWriter.CreateSlice();
+				
+		//		EndianBitConverter.Big.CopyBytes(value, valBuffer, 0);
+
+		//		_tree.Add(keySlice, valBuffer);
+		//	}
+
+		//	public void Dispose()
+		//	{
+		//		if (_tx != null)
+		//			_tx.Dispose();
+		//	}
+
+		//	public void Commit()
+		//	{
+		//		_tx.Commit();
+		//	}
+		//}
 
 		public void Dispose()
 		{
