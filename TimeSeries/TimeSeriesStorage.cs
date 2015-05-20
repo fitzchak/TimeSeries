@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Voron;
-using Voron.Debugging;
 using Voron.Impl;
 using Voron.Trees;
 using Voron.Util.Conversion;
@@ -78,27 +77,32 @@ namespace TimeSeries
 				_tree = _tx.State.GetTree(_tx, "data");
 			}
 
-			public IEnumerable<Point> Query(string key, DateTime start, DateTime end)
+			public IEnumerable<Point>[] Query(params TimeSeriesQuery[] queries)
+			{
+				var result = new IEnumerable<Point>[queries.Length];
+				for (int i = 0; i < queries.Length; i++)
+				{
+					result[i] = GetQueryResult(queries[i]);
+				}
+				return result;
+			}
+
+			private IEnumerable<Point> GetQueryResult(TimeSeriesQuery query)
 			{
 				var sliceWriter = new SliceWriter(1024);
-				sliceWriter.WriteString(key);
-				sliceWriter.WriteBigEndian(start.Ticks);
+				sliceWriter.WriteString(query.Key);
+				sliceWriter.WriteBigEndian(query.Start.Ticks);
 				var startSlice = sliceWriter.CreateSlice();
-
-				sliceWriter = new SliceWriter(1024);
-				sliceWriter.WriteString(key);
-				sliceWriter.WriteBigEndian(end.Ticks);
-				var endSlice = sliceWriter.CreateSlice();
 
 				var buffer = new byte[8];
 
 				using (var it = _tree.Iterate())
 				{
-					it.RequiredPrefix = key;
+					it.RequiredPrefix = query.Key;
 					if (it.Seek(startSlice) == false)
 						yield break;
 
-					var keyLength = Encoding.UTF8.GetByteCount(key);
+					var keyLength = Encoding.UTF8.GetByteCount(query.Key);
 					do
 					{
 						var keyReader = it.CurrentKey.CreateReader();
