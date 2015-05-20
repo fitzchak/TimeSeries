@@ -94,16 +94,18 @@ namespace TimeSeries
 
 				using (var it = _tree.Iterate())
 				{
-					it.MaxKey = endSlice;
-				//	it.RequiredPrefix = key;
+					it.RequiredPrefix = key;
 					if (it.Seek(startSlice) == false)
 						yield break;
 
+					var keyLength = Encoding.UTF8.GetByteCount(key);
 					do
 					{
 						var keyReader = it.CurrentKey.CreateReader();
 						int used;
 						var keyBytes = keyReader.ReadBytes(1024, out used);
+						if (used > keyLength + 8)
+							yield break;
 						var timeTicks = EndianBitConverter.Big.ToInt64(keyBytes, used - 8);
 
 						var reader = it.CreateReaderForCurrent();

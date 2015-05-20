@@ -66,7 +66,7 @@ namespace TimeSeries
 						Console.WriteLine(point.Key + ": " + point.At + " - " + point.Value);
 					}
 
-					foreach (var point in r.Query("sizes/en/Time", start, DateTime.Now.AddYears(5)))
+					foreach (var point in r.Query("sizes/en/Time", start, DateTime.MaxValue))
 					{
 						Console.WriteLine(point.Key + ": " + point.At + " - " + point.Value);
 					}
