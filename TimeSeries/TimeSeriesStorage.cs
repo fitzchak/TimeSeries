@@ -19,12 +19,12 @@ namespace TimeSeries
 		public TimeSeriesStorage(StorageEnvironmentOptions options)
 		{
 			_storageEnvironment = new StorageEnvironment(options);
-			_storageEnvironment.DebugJournal = new DebugJournal("debug_journal_test", _storageEnvironment, true);
+		//	_storageEnvironment.DebugJournal = new DebugJournal("debug_journal_test", _storageEnvironment, true);
 
 			using (var tx = _storageEnvironment.NewTransaction(TransactionFlags.ReadWrite))
 			{
 				var metadata = _storageEnvironment.CreateTree(tx, "$metadata");
-				_storageEnvironment.CreateTree(tx, "data", keysPrefixing: true);
+				_storageEnvironment.CreateTree(tx, "data", keysPrefixing: false);
 				var result = metadata.Read("id");
 				if (result == null) // new db
 				{
@@ -58,6 +58,8 @@ namespace TimeSeries
 
 		public class Point
 		{
+			public string Key { get; set; }
+
 			public DateTime At { get; set; }
 
 			public double Value { get; set; }
@@ -76,28 +78,41 @@ namespace TimeSeries
 				_tree = _tx.State.GetTree(_tx, "data");
 			}
 
-			public IEnumerable<Point> Query(string treeName, DateTime start, DateTime end)
+			public IEnumerable<Point> Query(string key, DateTime start, DateTime end)
 			{
-				var startBuffer = EndianBitConverter.Big.GetBytes(start.Ticks);
-				var endBuffer = EndianBitConverter.Big.GetBytes(end.Ticks);
+				var sliceWriter = new SliceWriter(1024);
+				sliceWriter.WriteString(key);
+				sliceWriter.WriteBigEndian(start.Ticks);
+				var startSlice = sliceWriter.CreateSlice();
+
+				sliceWriter = new SliceWriter(1024);
+				sliceWriter.WriteString(key);
+				sliceWriter.WriteBigEndian(end.Ticks);
+				var endSlice = sliceWriter.CreateSlice();
 
 				var buffer = new byte[8];
 
-				var tree = _tx.State.GetTree(_tx, treeName);
-				using (var it = tree.Iterate())
+				using (var it = _tree.Iterate())
 				{
-					it.MaxKey = new Slice(endBuffer);
-					if (it.Seek(new Slice(startBuffer)) == false)
+					it.MaxKey = endSlice;
+				//	it.RequiredPrefix = key;
+					if (it.Seek(startSlice) == false)
 						yield break;
 
 					do
 					{
+						var keyReader = it.CurrentKey.CreateReader();
+						int used;
+						var keyBytes = keyReader.ReadBytes(1024, out used);
+						var timeTicks = EndianBitConverter.Big.ToInt64(keyBytes, used - 8);
+
 						var reader = it.CreateReaderForCurrent();
 						reader.Read(buffer, 0, 8);
 
 						yield return new Point
 						{
-							At = new DateTime(it.CurrentKey.CreateReader().ReadBigEndianInt64()),
+							Key = Encoding.UTF8.GetString(keyBytes, 0, used - 8),
+							At = new DateTime(timeTicks),
 							Value = EndianBitConverter.Big.ToDouble(buffer, 0)
 						};
 					} while (it.MoveNext());
@@ -110,79 +125,46 @@ namespace TimeSeries
 					_tx.Dispose();
 			}
 		}
+
 		public class Writer : IDisposable
 		{
 			private readonly TimeSeriesStorage _storage;
-			private WriteBatch _wb=new WriteBatch();
+			private readonly Transaction _tx;
+
+			private readonly byte[] keyBuffer = new byte[1024];
+			private readonly byte[] valBuffer = new byte[8];
+			private readonly Tree _tree;
 
 			public Writer(TimeSeriesStorage storage)
 			{
 				_storage = storage;
+				_tx = _storage._storageEnvironment.NewTransaction(TransactionFlags.ReadWrite); 
+				_tree = _tx.State.GetTree(_tx, "data");
 			}
 
 			public void Append(string key, DateTime time, double value)
 			{
-				var sliceWriter = new SliceWriter(1024);
+				var sliceWriter = new SliceWriter(keyBuffer);
 				sliceWriter.WriteString(key);
 				sliceWriter.WriteBigEndian(time.Ticks);
 				var keySlice = sliceWriter.CreateSlice();
 
-				var buffer = new byte[8];
-				EndianBitConverter.Big.CopyBytes(value, buffer, 0);
+				EndianBitConverter.Big.CopyBytes(value, valBuffer, 0);
 
-				_wb.Add(keySlice, new Slice(buffer), "data");
+				_tree.Add(keySlice, valBuffer);
 			}
 
 			public void Dispose()
 			{
+				if (_tx != null)
+					_tx.Dispose();
 			}
 
 			public void Commit()
 			{
-				_storage.StorageEnvironment.Writer.Write(_wb);
+				_tx.Commit();
 			}
 		}
-
-
-		//public class Writer : IDisposable
-		//{
-		//	private readonly TimeSeriesStorage _storage;
-		//	private readonly Transaction _tx;
-
-		//	private readonly byte[] keyBuffer = new byte[1024];
-		//	private readonly byte[] valBuffer = new byte[8];
-		//	private readonly Tree _tree;
-
-		//	public Writer(TimeSeriesStorage storage)
-		//	{
-		//		_storage = storage;
-		//		_tx = _storage._storageEnvironment.NewTransaction(TransactionFlags.ReadWrite);
-		//		_tree = _tx.State.GetTree(_tx, "data");
-		//	}
-
-		//	public void Append(string key, DateTime time, double value)
-		//	{
-		//		var sliceWriter = new SliceWriter(keyBuffer);
-		//		sliceWriter.WriteString(key);
-		//		sliceWriter.WriteBigEndian(time.Ticks);
-		//		var keySlice = sliceWriter.CreateSlice();
-				
-		//		EndianBitConverter.Big.CopyBytes(value, valBuffer, 0);
-
-		//		_tree.Add(keySlice, valBuffer);
-		//	}
-
-		//	public void Dispose()
-		//	{
-		//		if (_tx != null)
-		//			_tx.Dispose();
-		//	}
-
-		//	public void Commit()
-		//	{
-		//		_tx.Commit();
-		//	}
-		//}
 
 		public void Dispose()
 		{
