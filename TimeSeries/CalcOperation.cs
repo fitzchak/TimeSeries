@@ -4,5 +4,7 @@
 	{
 		Sum,
 		Average,
+		Min,
+		Max,
 	}
 }

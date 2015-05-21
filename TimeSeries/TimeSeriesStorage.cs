@@ -114,7 +114,7 @@ namespace TimeSeries
 						durationStartPoint.Duration = duration;
 						continue;
 					}
-
+					 
 					if (point.At - durationStartPoint.At < duration)
 					{
 						switch (operation)
@@ -125,6 +125,12 @@ namespace TimeSeries
 							case CalcOperation.Average:
 								var previousAvarage = durationStartPoint.Value;
 								durationStartPoint.Value = previousAvarage*(count - 1)/(count) + point.Value/(count); 
+								break;
+							case CalcOperation.Min:
+								durationStartPoint.Value += Math.Min(durationStartPoint.Value, point.Value);
+								break;
+							case CalcOperation.Max:
+								durationStartPoint.Value += Math.Max(durationStartPoint.Value, point.Value);
 								break;
 							default:
 								throw new ArgumentOutOfRangeException();
