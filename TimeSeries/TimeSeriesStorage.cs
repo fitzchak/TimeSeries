@@ -65,6 +65,21 @@ namespace TimeSeries
 			public double Value { get; set; }
 
 			public TimeSpan? Duration { get; set; }
+
+			public Candle Candle { get; set; }
+		}
+
+		public class Candle
+		{
+			public double High { get; set; }
+			
+			public double Low { get; set; }
+			
+			public double Open { get; set; }
+			
+			public double Close { get; set; }
+
+			public int Volume { get; set; }
 		}
 
 		public class Reader : IDisposable
@@ -112,9 +127,20 @@ namespace TimeSeries
 					{
 						durationStartPoint = point;
 						durationStartPoint.Duration = duration;
+						durationStartPoint.Candle = new Candle {Open = point.Value};
+
+						durationStartPoint.Candle.High = point.Value;
+						durationStartPoint.Candle.Low = point.Value;
+						durationStartPoint.Candle.Close = point.Value;
+						durationStartPoint.Candle.Volume = count;
 						continue;
 					}
-					 
+
+					durationStartPoint.Candle.High = Math.Max(durationStartPoint.Candle.High, point.Value);
+					durationStartPoint.Candle.Low = Math.Min(durationStartPoint.Candle.Low, point.Value);
+					durationStartPoint.Candle.Close = point.Value;
+					durationStartPoint.Candle.Volume = count;
+
 					if (point.At - durationStartPoint.At < duration)
 					{
 						switch (operation)

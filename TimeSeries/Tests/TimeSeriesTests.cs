@@ -140,6 +140,12 @@ namespace TimeSeries.Tests
 					Assert.Equal("26.3333333333333", time[0].Value.ToString());
 					Assert.Equal("Time", time[0].Key);
 					Assert.Equal(TimeSpan.FromHours(3), time[0].Duration);
+					Assert.Equal(3, time[0].Candle.Volume);
+					Assert.Equal(10, time[0].Candle.Open);
+					Assert.Equal(50, time[0].Candle.Close);
+					Assert.Equal(50, time[0].Candle.High);
+					Assert.Equal(10, time[0].Candle.Low);
+					
 
 					Assert.Equal(2, money.Length);
 					Assert.Equal("Money", money[0].Key);
