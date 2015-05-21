@@ -312,21 +312,9 @@ namespace TimeSeries.Tests
 					var money = result[1].ToArray();
 					var Is = result[2].ToArray();
 
-					Assert.Equal(1, time.Length);
-					Assert.Equal(new DateTime(2015, 4, 1, 0, 0, 0), time[0].At);
-					Assert.Equal(new DateTime(2015, 4, 1, 1, 0, 0), time[1].At);
-					Assert.Equal(new DateTime(2015, 4, 1, 2, 0, 0), time[2].At);
-					Assert.Equal(10, time[0].Value);
-					Assert.Equal(19, time[1].Value);
-					Assert.Equal(50, time[2].Value);
-					Assert.Equal("Time", time[0].DebugKey);
-					Assert.Equal("Time", time[1].DebugKey);
-					Assert.Equal("Time", time[2].DebugKey);
-
-					Assert.Equal(3, money.Length);
-					Assert.Equal("Money", money[0].DebugKey);
-					Assert.Equal("Money", money[1].DebugKey);
-					Assert.Equal("Money", money[2].DebugKey);
+					Assert.Equal(0, time.Length);
+					Assert.Equal(0, money.Length);
+					Assert.Equal(0, Is.Length);
 				}
 			}
 		}

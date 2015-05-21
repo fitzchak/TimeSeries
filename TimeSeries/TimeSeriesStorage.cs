@@ -89,13 +89,13 @@ namespace TimeSeries
 				_tree = _tx.State.GetTree(_tx, "data");
 			}
 
-			public List<Point>[] Query(params TimeSeriesQuery[] queries)
+			public IEnumerable<Point>[] Query(params TimeSeriesQuery[] queries)
 			{
-				var result = new List<Point>[queries.Length];
-				Parallel.For(0, queries.Length, i =>
+				var result = new IEnumerable<Point>[queries.Length];
+				for (int i = 0; i < queries.Length; i++)
 				{
-					result[i] = GetQueryResult(queries[i]).ToList();
-				});
+					result[i] = GetQueryResult(queries[i]);
+				}
 				return result;
 			}
 
