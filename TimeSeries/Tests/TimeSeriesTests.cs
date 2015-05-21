@@ -56,6 +56,32 @@ namespace TimeSeries.Tests
 		}
 
 		[Fact]
+		public void CanQueryDataOnSeries()
+		{
+			using (var tss = new TimeSeriesStorage(StorageEnvironmentOptions.CreateMemoryOnly()))
+			{
+				WriteTestData(tss);
+
+				using (var r = tss.CreateReader())
+				{
+					var result = r.Query(
+						new TimeSeriesQuery
+						{
+							Key = "Money",
+							Start = DateTime.MinValue,
+							End = DateTime.MaxValue
+						});
+
+					var money = result.Single().ToArray();
+					Assert.Equal(3, money.Length);
+					Assert.Equal("Money", money[0].Key);
+					Assert.Equal("Money", money[1].Key);
+					Assert.Equal("Money", money[2].Key);
+				}
+			}
+		}
+
+		[Fact]
 		public void CanQueryDataInSpecificDurationSum()
 		{
 			using (var tss = new TimeSeriesStorage(StorageEnvironmentOptions.CreateMemoryOnly()))
