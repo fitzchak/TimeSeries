@@ -75,7 +75,7 @@ namespace TimeSeries
 					{
 						foreach (var point in result)
 						{
-							Console.WriteLine(point.Key + ": " + point.At + " - " + point.Value);
+							Console.WriteLine(point.DebugKey + ": " + point.At + " - " + point.Value);
 						}
 					}
 				}
