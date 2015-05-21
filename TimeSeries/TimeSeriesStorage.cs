@@ -86,7 +86,7 @@ namespace TimeSeries
 		{
 			private readonly TimeSeriesStorage _storage;
 			private readonly Transaction _tx;
-			private Tree _tree;
+			private readonly Tree _tree;
 
 			public Reader(TimeSeriesStorage storage)
 			{
@@ -122,27 +122,20 @@ namespace TimeSeries
 				int count = 0;
 				foreach (var point in result)
 				{
-					++count;
 					if (durationStartPoint == null)
 					{
 						durationStartPoint = point;
-						durationStartPoint.Duration = duration;
-						durationStartPoint.Candle = new Candle {Open = point.Value};
-
-						durationStartPoint.Candle.High = point.Value;
-						durationStartPoint.Candle.Low = point.Value;
-						durationStartPoint.Candle.Close = point.Value;
-						durationStartPoint.Candle.Volume = count;
+						SetupPointResult(durationStartPoint, duration, count = 1);
 						continue;
 					}
 
-					durationStartPoint.Candle.High = Math.Max(durationStartPoint.Candle.High, point.Value);
-					durationStartPoint.Candle.Low = Math.Min(durationStartPoint.Candle.Low, point.Value);
-					durationStartPoint.Candle.Close = point.Value;
-					durationStartPoint.Candle.Volume = count;
-
 					if (point.At - durationStartPoint.At < duration)
 					{
+						durationStartPoint.Candle.High = Math.Max(durationStartPoint.Candle.High, point.Value);
+						durationStartPoint.Candle.Low = Math.Min(durationStartPoint.Candle.Low, point.Value);
+						durationStartPoint.Candle.Close = point.Value;
+						durationStartPoint.Candle.Volume = ++count;
+
 						switch (operation)
 						{
 							case CalcOperation.Sum:
@@ -166,12 +159,25 @@ namespace TimeSeries
 					{
 						yield return durationStartPoint;
 						durationStartPoint = point;
-						durationStartPoint.Duration = duration;
+						SetupPointResult(durationStartPoint, duration, count = 1);
 					}
 				}
 
 				if (durationStartPoint != null)
 					yield return durationStartPoint;
+			}
+
+			private void SetupPointResult(Point point, TimeSpan duration, int count)
+			{
+				point.Duration = duration;
+				point.Candle = new Candle
+				{
+					Open = point.Value,
+					High = point.Value,
+					Low = point.Value,
+					Close = point.Value,
+					Volume = count
+				};
 			}
 
 			private IEnumerable<Point> GetRawQueryResult(TimeSeriesQuery query)

@@ -153,6 +153,100 @@ namespace TimeSeries.Tests
 					Assert.Equal(130, money[1].Value);
 					Assert.Equal(TimeSpan.FromHours(2), money[0].Duration);
 					Assert.Equal(TimeSpan.FromHours(2), money[1].Duration);
+					Assert.Equal(2, money[0].Candle.Volume);
+					Assert.Equal(1, money[1].Candle.Volume);
+					Assert.Equal(54, money[0].Candle.Open);
+					Assert.Equal(130, money[1].Candle.Open);
+					Assert.Equal(546, money[0].Candle.Close);
+					Assert.Equal(130, money[1].Candle.Close);
+					Assert.Equal(54, money[0].Candle.Low);
+					Assert.Equal(130, money[1].Candle.Low);
+					Assert.Equal(546, money[0].Candle.High);
+					Assert.Equal(130, money[1].Candle.High);
+				}
+			}
+		}
+
+		[Fact]
+		public void CanQueryDataInSpecificDuration_Lower()
+		{
+			using (var tss = new TimeSeriesStorage(StorageEnvironmentOptions.CreateMemoryOnly()))
+			{
+				WriteTestData(tss);
+
+				var start = new DateTime(2015, 4, 1, 0, 0, 0);
+				using (var r = tss.CreateReader())
+				{
+					var result = r.Query(
+						new TimeSeriesQuery
+						{
+							Key = "Time",
+							Start = start.AddYears(-1),
+							End = start.AddYears(1),
+							PeriodDuration = TimeSpan.FromSeconds(3),
+							PeriodCalcOperation = CalcOperation.Average,
+						},
+						new TimeSeriesQuery
+						{
+							Key = "Money",
+							Start = DateTime.MinValue,
+							End = DateTime.MaxValue,
+							PeriodDuration = TimeSpan.FromMinutes(3),
+							PeriodCalcOperation = CalcOperation.Sum,
+						}).ToArray();
+
+					Assert.Equal(2, result.Length);
+					var time = result[0].ToArray();
+					var money = result[1].ToArray();
+
+					Assert.Equal(3, time.Length);
+					Assert.Equal(10, time[0].Value);
+					Assert.Equal(19, time[1].Value);
+					Assert.Equal(50, time[2].Value);
+					Assert.Equal("Time", time[0].Key);
+					Assert.Equal(TimeSpan.FromSeconds(3), time[0].Duration);
+					Assert.Equal(TimeSpan.FromSeconds(3), time[1].Duration);
+					Assert.Equal(TimeSpan.FromSeconds(3), time[2].Duration);
+					Assert.Equal(1, time[0].Candle.Volume);
+					Assert.Equal(1, time[1].Candle.Volume);
+					Assert.Equal(1, time[2].Candle.Volume);
+					Assert.Equal(10, time[0].Candle.Open);
+					Assert.Equal(19, time[1].Candle.Open);
+					Assert.Equal(50, time[2].Candle.Open);
+					Assert.Equal(10, time[0].Candle.Close);
+					Assert.Equal(19, time[1].Candle.Close);
+					Assert.Equal(50, time[2].Candle.Close);
+					Assert.Equal(10, time[0].Candle.Low);
+					Assert.Equal(19, time[1].Candle.Low);
+					Assert.Equal(50, time[2].Candle.Low);
+					Assert.Equal(10, time[0].Candle.High);
+					Assert.Equal(19, time[1].Candle.High);
+					Assert.Equal(50, time[2].Candle.High);
+
+
+					Assert.Equal(3, money.Length);
+					Assert.Equal(54, money[0].Value);
+					Assert.Equal(546, money[1].Value);
+					Assert.Equal(130, money[2].Value);
+					Assert.Equal("Money", money[0].Key);
+					Assert.Equal(TimeSpan.FromMinutes(3), money[0].Duration);
+					Assert.Equal(TimeSpan.FromMinutes(3), money[1].Duration);
+					Assert.Equal(TimeSpan.FromMinutes(3), money[2].Duration);
+					Assert.Equal(1, money[0].Candle.Volume);
+					Assert.Equal(1, money[1].Candle.Volume);
+					Assert.Equal(1, money[2].Candle.Volume);
+					Assert.Equal(54, money[0].Candle.Open);
+					Assert.Equal(546, money[1].Candle.Open);
+					Assert.Equal(130, money[2].Candle.Open);
+					Assert.Equal(54, money[0].Candle.Close);
+					Assert.Equal(546, money[1].Candle.Close);
+					Assert.Equal(130, money[2].Candle.Close);
+					Assert.Equal(54, money[0].Candle.Low);
+					Assert.Equal(546, money[1].Candle.Low);
+					Assert.Equal(130, money[2].Candle.Low);
+					Assert.Equal(54, money[0].Candle.High);
+					Assert.Equal(546, money[1].Candle.High);
+					Assert.Equal(130, money[2].Candle.High);
 				}
 			}
 		}
