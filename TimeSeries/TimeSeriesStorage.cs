@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Voron;
 using Voron.Impl;
@@ -62,6 +63,8 @@ namespace TimeSeries
 			public DateTime At { get; set; }
 
 			public double Value { get; set; }
+
+			public TimeSpan? Duration { get; set; }
 		}
 
 		public class Reader : IDisposable
@@ -88,6 +91,58 @@ namespace TimeSeries
 			}
 
 			private IEnumerable<Point> GetQueryResult(TimeSeriesQuery query)
+			{
+				var result = GetRawQueryResult(query);
+
+				if (query.PeriodDuration.HasValue)
+					result = AnalyzePeriodDuration(result, query.PeriodDuration.Value, query.PeriodCalcOperation);
+
+				return result;
+			}
+
+			private IEnumerable<Point> AnalyzePeriodDuration(IEnumerable<Point> result, TimeSpan duration, CalcOperation operation)
+			{
+				Point durationStartPoint = null;
+
+				int count = 0;
+				foreach (var point in result)
+				{
+					++count;
+					if (durationStartPoint == null)
+					{
+						durationStartPoint = point;
+						durationStartPoint.Duration = duration;
+						continue;
+					}
+
+					if (point.At - durationStartPoint.At < duration)
+					{
+						switch (operation)
+						{
+							case CalcOperation.Sum:
+								durationStartPoint.Value += point.Value;
+								break;
+							case CalcOperation.Average:
+								var previousAvarage = durationStartPoint.Value;
+								durationStartPoint.Value = previousAvarage*(count - 1)/(count) + point.Value/(count); 
+								break;
+							default:
+								throw new ArgumentOutOfRangeException();
+						}
+					}
+					else
+					{
+						yield return durationStartPoint;
+						durationStartPoint = point;
+						durationStartPoint.Duration = duration;
+					}
+				}
+
+				if (durationStartPoint != null)
+					yield return durationStartPoint;
+			}
+
+			private IEnumerable<Point> GetRawQueryResult(TimeSeriesQuery query)
 			{
 				var sliceWriter = new SliceWriter(1024);
 				sliceWriter.WriteString(query.Key);

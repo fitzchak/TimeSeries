@@ -61,8 +61,17 @@ namespace TimeSeries
 				var start = new DateTime(2015, 4, 1, 0, 0, 0);
 				using (var r = tss.CreateReader())
 				{
-					foreach (var result in r.Query(new TimeSeriesQuery {Key = "views/en/Time", Start = start.AddYears(-1), End = start.AddYears(1).AddDays(1)},
-						new TimeSeriesQuery {Key = "sizes/en/Time", Start = DateTime.MinValue, End = DateTime.MaxValue}))
+					foreach (var result in r.Query(
+						new TimeSeriesQuery
+						{
+							Key = "views/en/Time", 
+							Start = start.AddYears(-1), 
+							End = start.AddYears(1).AddDays(1), 
+							PeriodDuration = TimeSpan.FromHours(6),
+							PeriodCalcOperation = CalcOperation.Sum,
+						},
+						new TimeSeriesQuery {Key = "sizes/en/Time", Start = DateTime.MinValue, End = DateTime.MaxValue})
+						)
 					{
 						foreach (var point in result)
 						{

@@ -9,5 +9,11 @@ namespace TimeSeries
 		public DateTime Start { get; set; }
 		
 		public DateTime End { get; set; }
+		
+		public bool GenerateCandles { get; set; }
+
+		public TimeSpan? PeriodDuration { get; set; }
+
+		public CalcOperation PeriodCalcOperation { get; set; }
 	}
 }
