@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Voron;
 using Voron.Impl;
 using Voron.Trees;
@@ -36,7 +34,7 @@ namespace TimeSeries
 					int used;
 					Id = new Guid(result.Reader.ReadBytes(16, out used));
 				}
-
+				 
 				tx.Commit();
 			}
 		}
@@ -76,6 +74,8 @@ namespace TimeSeries
 			public double Close { get; set; }
 
 			public int Volume { get; set; }
+
+			public double Sum { get; set; }
 		}
 
 		public class Reader : IDisposable
@@ -104,12 +104,12 @@ namespace TimeSeries
 				var result = GetRawQueryResult(query);
 
 				if (query.PeriodDuration.HasValue)
-					result = AnalyzePeriodDuration(result, query.PeriodDuration.Value, query.PeriodCalcOperation);
+					result = AnalyzePeriodDuration(result, query.PeriodDuration.Value);
 
 				return result;
 			}
 
-			private IEnumerable<Point> AnalyzePeriodDuration(IEnumerable<Point> result, TimeSpan duration, CalcOperation operation)
+			private IEnumerable<Point> AnalyzePeriodDuration(IEnumerable<Point> result, TimeSpan duration)
 			{
 				Point durationStartPoint = null;
 
@@ -118,9 +118,8 @@ namespace TimeSeries
 				{
 					if (durationStartPoint == null)
 					{
-						durationStartPoint = point;
 						count = 1;
-						SetupPointResult(durationStartPoint, duration, 1);
+						durationStartPoint = SetupPointResult(point, duration, 1);
 						continue;
 					}
 
@@ -130,54 +129,42 @@ namespace TimeSeries
 						durationStartPoint.Candle.Low = Math.Min(durationStartPoint.Candle.Low, point.Value);
 						durationStartPoint.Candle.Close = point.Value;
 						durationStartPoint.Candle.Volume = ++count;
-
-						switch (operation)
-						{
-							case CalcOperation.Sum:
-							case CalcOperation.Average:
-								durationStartPoint.Value += point.Value;
-								break;
-							case CalcOperation.Min:
-								durationStartPoint.Value += Math.Min(durationStartPoint.Value, point.Value);
-								break;
-							case CalcOperation.Max:
-								durationStartPoint.Value += Math.Max(durationStartPoint.Value, point.Value);
-								break;
-							default:
-								throw new ArgumentOutOfRangeException();
-						}
+						durationStartPoint.Candle.Sum += point.Value;
+						durationStartPoint.Value = double.NaN;
 					}
 					else
 					{
-						if (operation == CalcOperation.Average)
-							durationStartPoint.Value = durationStartPoint.Value/count;
-
 						yield return durationStartPoint;
-						durationStartPoint = point;
 						count = 1;
-						SetupPointResult(durationStartPoint, duration, 1);
+						durationStartPoint = SetupPointResult(point, duration, 1); ;
 					}
 				}
 
 				if (durationStartPoint != null)
 				{
-					if (operation == CalcOperation.Average)
-						durationStartPoint.Value = durationStartPoint.Value / count;
-
 					yield return durationStartPoint;
 				}
 			}
 
-			private void SetupPointResult(Point point, TimeSpan duration, int count)
+			private Point SetupPointResult(Point point, TimeSpan duration, int count)
 			{
-				point.Duration = duration;
-				point.Candle = new Candle
+				return new Point
 				{
-					Open = point.Value,
-					High = point.Value,
-					Low = point.Value,
-					Close = point.Value,
-					Volume = count
+#if DEBUG
+					DebugKey = point.DebugKey,
+#endif
+					At = point.At,
+					Value = point.Value,
+					Duration = duration,
+					Candle = new Candle
+					{
+						Open = point.Value,
+						High = point.Value,
+						Low = point.Value,
+						Close = point.Value,
+						Volume = count,
+						Sum = point.Value,
+					}
 				};
 			}
 

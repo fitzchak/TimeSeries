@@ -13,7 +13,5 @@ namespace TimeSeries
 		public bool GenerateCandles { get; set; }
 
 		public TimeSpan? PeriodDuration { get; set; }
-
-		public CalcOperation PeriodCalcOperation { get; set; }
 	}
 }

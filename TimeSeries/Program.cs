@@ -68,7 +68,6 @@ namespace TimeSeries
 							Start = start.AddYears(-1), 
 							End = start.AddYears(1).AddDays(1), 
 							PeriodDuration = TimeSpan.FromHours(6),
-							PeriodCalcOperation = CalcOperation.Sum,
 						},
 						new TimeSeriesQuery {Key = "sizes/en/Time", Start = DateTime.MinValue, End = DateTime.MaxValue})
 						)

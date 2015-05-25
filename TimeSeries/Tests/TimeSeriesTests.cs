@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Linq;
 using System.Xml.Linq;
 using Voron;
@@ -98,7 +99,6 @@ namespace TimeSeries.Tests
 							Start = start.AddYears(-1),
 							End = start.AddYears(1),
 							PeriodDuration = TimeSpan.FromHours(6),
-							PeriodCalcOperation = CalcOperation.Sum,
 						},
 						new TimeSeriesQuery
 						{
@@ -106,7 +106,6 @@ namespace TimeSeries.Tests
 							Start = DateTime.MinValue,
 							End = DateTime.MaxValue,
 							PeriodDuration = TimeSpan.FromHours(2),
-							PeriodCalcOperation = CalcOperation.Sum,
 						}).ToArray();
 
 					Assert.Equal(2, result.Length);
@@ -115,15 +114,15 @@ namespace TimeSeries.Tests
 
 					Assert.Equal(1, time.Length);
 					Assert.Equal(new DateTime(2015, 4, 1, 0, 0, 0), time[0].At);
-					Assert.Equal(79, time[0].Value);
+					Assert.Equal(79, time[0].Candle.Sum);
 					Assert.Equal("Time", time[0].DebugKey);
 					Assert.Equal(TimeSpan.FromHours(6), time[0].Duration);
 
 					Assert.Equal(2, money.Length);
 					Assert.Equal("Money", money[0].DebugKey);
 					Assert.Equal("Money", money[1].DebugKey);
-					Assert.Equal(600, money[0].Value);
-					Assert.Equal(130, money[1].Value);
+					Assert.Equal(600, money[0].Candle.Sum);
+					Assert.Equal(130, money[1].Candle.Sum);
 					Assert.Equal(TimeSpan.FromHours(2), money[0].Duration);
 					Assert.Equal(TimeSpan.FromHours(2), money[1].Duration);
 				}
@@ -147,7 +146,6 @@ namespace TimeSeries.Tests
 							Start = start.AddYears(-1),
 							End = start.AddYears(1),
 							PeriodDuration = TimeSpan.FromHours(3),
-							PeriodCalcOperation = CalcOperation.Average,
 						},
 						new TimeSeriesQuery
 						{
@@ -155,7 +153,6 @@ namespace TimeSeries.Tests
 							Start = DateTime.MinValue,
 							End = DateTime.MaxValue,
 							PeriodDuration = TimeSpan.FromHours(2),
-							PeriodCalcOperation = CalcOperation.Average,
 						}).ToArray();
 
 					Assert.Equal(2, result.Length);
@@ -163,7 +160,7 @@ namespace TimeSeries.Tests
 					var money = result[1].ToArray();
 
 					Assert.Equal(1, time.Length);
-					Assert.Equal("26.3333333333333", time[0].Value.ToString());
+					Assert.Equal("26.3333333333333", (time[0].Candle.Sum / time[0].Candle.Volume).ToString(CultureInfo.InvariantCulture));
 					Assert.Equal("Time", time[0].DebugKey);
 					Assert.Equal(TimeSpan.FromHours(3), time[0].Duration);
 					Assert.Equal(3, time[0].Candle.Volume);
@@ -175,8 +172,8 @@ namespace TimeSeries.Tests
 
 					Assert.Equal(2, money.Length);
 					Assert.Equal("Money", money[0].DebugKey);
-					Assert.Equal(300, money[0].Value);
-					Assert.Equal(130, money[1].Value);
+					Assert.Equal(300, money[0].Candle.Sum / money[0].Candle.Volume);
+					Assert.Equal(130, money[1].Candle.Sum / money[1].Candle.Volume);
 					Assert.Equal(TimeSpan.FromHours(2), money[0].Duration);
 					Assert.Equal(TimeSpan.FromHours(2), money[1].Duration);
 					Assert.Equal(2, money[0].Candle.Volume);
@@ -194,7 +191,7 @@ namespace TimeSeries.Tests
 		}
 
 		[Fact]
-		public void CanQueryDataInSpecificDuration_Lower()
+		public void CanQueryDataInSpecificDuration_LowerDurationThanActualOnDisk()
 		{
 			using (var tss = new TimeSeriesStorage(StorageEnvironmentOptions.CreateMemoryOnly()))
 			{
@@ -210,7 +207,6 @@ namespace TimeSeries.Tests
 							Start = start.AddYears(-1),
 							End = start.AddYears(1),
 							PeriodDuration = TimeSpan.FromSeconds(3),
-							PeriodCalcOperation = CalcOperation.Average,
 						},
 						new TimeSeriesQuery
 						{
@@ -218,7 +214,6 @@ namespace TimeSeries.Tests
 							Start = DateTime.MinValue,
 							End = DateTime.MaxValue,
 							PeriodDuration = TimeSpan.FromMinutes(3),
-							PeriodCalcOperation = CalcOperation.Sum,
 						}).ToArray();
 
 					Assert.Equal(2, result.Length);
