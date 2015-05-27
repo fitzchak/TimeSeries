@@ -1,14 +1,16 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
-using System.Text;
+using System.Web.Http;
+using Microsoft.Owin.Hosting;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Owin;
+using Rachis;
+using Rachis.Transport;
 using Voron;
-using Voron.Debugging;
-using Voron.Impl;
-using Voron.Trees;
 
 namespace TimeSeries
 {
@@ -16,6 +18,59 @@ namespace TimeSeries
 	{
 		private static void Main(string[] args)
 		{
+			/*var server = new TimeSeriesServer
+			{
+				DataPath = "D1",
+				Port = 9011,
+			};
+
+			var nodeName = server.NodeName ?? (Environment.MachineName + ":" + server.Port);
+			var httpTransport = new HttpTransport(nodeName);
+
+			var kvso = StorageEnvironmentOptions.ForPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, server.DataPath, "KeyValue"));
+			using (var statemachine = new KeyValueStateMachine(kvso))
+			{
+				var raftEngineOptions = new RaftEngineOptions(
+					new NodeConnectionInfo
+					{
+						Name = nodeName,
+						Uri = new Uri("http://" + Environment.MachineName + ":" + server.Port),
+					},
+					StorageEnvironmentOptions.ForPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, server.DataPath, "Raft")),
+					httpTransport,
+					statemachine
+					)
+				{
+					ElectionTimeout = 5*1000,
+					HeartbeatTimeout = 1000,
+					MaxLogLengthBeforeCompaction = 25
+				};
+
+				using (var raftEngine = new RaftEngine(raftEngineOptions))
+				{
+					using (WebApp.Start(new StartOptions
+					{
+						Urls = {"http://+:" + server.Port + "/"}
+					}, builder =>
+					{
+						var httpConfiguration = new HttpConfiguration();
+						httpConfiguration.Formatters.Remove(httpConfiguration.Formatters.XmlFormatter);
+						httpConfiguration.Formatters.JsonFormatter.SerializerSettings.Formatting = Formatting.Indented;
+						httpConfiguration.Formatters.JsonFormatter.SerializerSettings.Converters.Add(new StringEnumConverter());
+						RaftWebApiConfig.Load();
+						httpConfiguration.MapHttpAttributeRoutes();
+						httpConfiguration.Properties[typeof (HttpTransportBus)] = httpTransport.Bus;
+						httpConfiguration.Properties[typeof (RaftEngine)] = raftEngine;
+						builder.UseWebApi(httpConfiguration);
+					}))
+					{
+						Console.WriteLine("Ready @ http://" + Environment.MachineName + ":" + server.Port + "/, press ENTER to stop");
+
+						Console.ReadLine();
+					}
+				}
+			}*/
+
 			var storageEnvironmentOptions = StorageEnvironmentOptions.ForPath("Test3");
 			//storageEnvironmentOptions.ManualFlushing = true;
 			using (var tss = new TimeSeriesStorage(storageEnvironmentOptions))
@@ -81,7 +136,7 @@ namespace TimeSeries
 			}
 		}
 
-		private static void WriteTestData(TimeSeriesStorage tss)
+	private static void WriteTestData(TimeSeriesStorage tss)
 		{
 			var start = new DateTime(2015, 4, 1, 0, 0, 0);
 			var data = new[]
