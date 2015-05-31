@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Voron;
 using Voron.Impl;
@@ -41,7 +42,7 @@ namespace TimeSeries
 
 		public Reader CreateReader()
 		{
-			return new Reader(this);
+			return new Reader(this, true);
 		}
 
 		public Writer CreateWriter()
@@ -51,12 +52,17 @@ namespace TimeSeries
 
 		public class Point
 		{
+			private double _value;
 #if DEBUG
 			public string DebugKey { get; set; }
 #endif
 			public DateTime At { get; set; }
 
-			public double Value { get; set; }
+			public double Value
+			{
+				get { return _value; }
+				set { _value = value; }
+			}
 
 			public TimeSpan? Duration { get; set; }
 
@@ -80,13 +86,22 @@ namespace TimeSeries
 
 		public class Reader : IDisposable
 		{
+			private readonly TimeSeriesStorage _storage;
+			private readonly bool _storeComputedPeriods;
 			private readonly Transaction _tx;
 			private readonly Tree _tree;
 
-			public Reader(TimeSeriesStorage storage)
+			public Reader(TimeSeriesStorage storage, bool storeComputedPeriods)
 			{
-				_tx = storage._storageEnvironment.NewTransaction(TransactionFlags.Read);
+				_storage = storage;
+				_storeComputedPeriods = storeComputedPeriods;
+				_tx = _storage._storageEnvironment.NewTransaction(TransactionFlags.Read);
 				_tree = _tx.State.GetTree(_tx, "data");
+			}
+
+			public IEnumerable<Point> Query(TimeSeriesQuery query)
+			{
+				return GetQueryResult(query);
 			}
 
 			public IEnumerable<Point>[] Query(params TimeSeriesQuery[] queries)
@@ -101,12 +116,35 @@ namespace TimeSeries
 
 			private IEnumerable<Point> GetQueryResult(TimeSeriesQuery query)
 			{
-				var result = GetRawQueryResult(query);
+				if (query.PeriodDuration.HasValue == false)
+				{
+					var result = GetRawQueryResult(query, _tree);
+					return result;
+				}
+				
+				using (var periodTx = _storage._storageEnvironment.NewTransaction(TransactionFlags.ReadWrite))
+				{
+					var periodTree = periodTx.State.GetTree(periodTx, "period_" + query.PeriodDuration.Value.Ticks);
+					var result = GetRawQueryResult(query, periodTree).ToArray();
+					if (result.Any())
+					{
+						return result;
+					}
 
-				if (query.PeriodDuration.HasValue)
-					result = AnalyzePeriodDuration(result, query.PeriodDuration.Value);
+					var computedResult = GetRawQueryResult(query, _tree);
+					var computedResultArray = AnalyzePeriodDuration(computedResult, query.PeriodDuration.Value).ToArray().ToArray();
 
-				return result;
+					using (var writer = new RollupWriter(periodTree))
+					{
+						foreach (var point in computedResultArray)
+						{
+							writer.Append(query.Key, point.At, point.Candle);
+						}
+						periodTx.Commit();
+					}
+
+					return computedResultArray;
+				}
 			}
 
 			private IEnumerable<Point> AnalyzePeriodDuration(IEnumerable<Point> result, TimeSpan duration)
@@ -154,7 +192,7 @@ namespace TimeSeries
 					DebugKey = point.DebugKey,
 #endif
 					At = point.At,
-					Value = point.Value,
+					Value = double.NaN,
 					Duration = duration,
 					Candle = new Candle
 					{
@@ -168,8 +206,10 @@ namespace TimeSeries
 				};
 			}
 
-			private IEnumerable<Point> GetRawQueryResult(TimeSeriesQuery query)
+			private static IEnumerable<Point> GetRawQueryResult(TimeSeriesQuery query, Tree tree)
 			{
+				var isRawData = tree.Name == "data";
+
 				var keyBytesLen = Encoding.UTF8.GetByteCount(query.Key) + sizeof(long);
 				var startKeyWriter = new SliceWriter(keyBytesLen);
 				startKeyWriter.WriteString(query.Key);
@@ -181,7 +221,7 @@ namespace TimeSeries
 
 				var endTicks = query.End.Ticks;
 
-				using (var it = _tree.Iterate())
+				using (var it = tree.Iterate())
 				{
 					it.RequiredPrefix = prefixKey;
 					
@@ -194,23 +234,43 @@ namespace TimeSeries
 							yield break;
 
 						var keyReader = it.CurrentKey.CreateReader();
-						var reader = it.CreateReaderForCurrent();
-
-						reader.Read(buffer, 0, sizeof(double));
-
 						keyReader.Skip(keyBytesLen - sizeof (long));
 						var ticks = keyReader.ReadBigEndianInt64();
 						if(ticks > endTicks)
 							yield break;
 
-						yield return new Point
+						var point = new Point
 						{
 #if DEBUG
-							DebugKey = keyReader.AsPartialSlice(sizeof (long)).ToString(),
+							DebugKey = keyReader.AsPartialSlice(sizeof(long)).ToString(),
 #endif
 							At = new DateTime(ticks),
-							Value = EndianBitConverter.Big.ToDouble(buffer,0)
 						};
+
+						if (isRawData)
+						{
+							var reader = it.CreateReaderForCurrent();
+							reader.Read(buffer, 0, sizeof (double));
+							point.Value = EndianBitConverter.Big.ToDouble(buffer, 0);
+						}
+						else
+						{
+							var structureReader = it.ReadStructForCurrent(RollupWriter.CandleSchema);
+							var candle = new Candle
+							{
+								High = structureReader.ReadDouble(PointCandleSchema.High),
+								Low = structureReader.ReadDouble(PointCandleSchema.Low),
+								Open = structureReader.ReadDouble(PointCandleSchema.Open),
+								Close = structureReader.ReadDouble(PointCandleSchema.Close),
+								Sum = structureReader.ReadDouble(PointCandleSchema.Sum),
+								Volume = structureReader.ReadInt(PointCandleSchema.Volume),
+							};
+							point.Candle = candle;
+							point.Duration = query.PeriodDuration;
+							point.Value = double.NaN;
+						}
+
+						yield return point;
 					} while (it.MoveNext());
 				}
 			}
@@ -257,6 +317,54 @@ namespace TimeSeries
 			public void Commit()
 			{
 				_tx.Commit();
+			}
+		}
+
+		public class RollupWriter : IDisposable
+		{
+			public static readonly StructureSchema<PointCandleSchema> CandleSchema;
+
+			static RollupWriter()
+			{
+				CandleSchema = new StructureSchema<PointCandleSchema>()
+					.Add<double>(PointCandleSchema.High)
+					.Add<double>(PointCandleSchema.Low)
+					.Add<double>(PointCandleSchema.Open)
+					.Add<double>(PointCandleSchema.Close)
+					.Add<double>(PointCandleSchema.Sum)
+					.Add<int>(PointCandleSchema.Volume);
+			}
+
+			private readonly Tree _tree;
+
+			private readonly byte[] _keyBuffer = new byte[1024];
+
+			public RollupWriter(Tree tree)
+			{
+				_tree = tree;
+			}
+
+			public void Append(string key, DateTime time, Candle candle)
+			{
+				var sliceWriter = new SliceWriter(_keyBuffer);
+				sliceWriter.WriteString(key);
+				sliceWriter.WriteBigEndian(time.Ticks);
+				var keySlice = sliceWriter.CreateSlice();
+
+				var structure = new Structure<PointCandleSchema>(CandleSchema);
+
+				structure.Set(PointCandleSchema.High, candle.High);
+				structure.Set(PointCandleSchema.Low, candle.Low);
+				structure.Set(PointCandleSchema.Open, candle.Open);
+				structure.Set(PointCandleSchema.Close, candle.Close);
+				structure.Set(PointCandleSchema.Sum, candle.Sum);
+				structure.Set(PointCandleSchema.Volume, candle.Volume);
+
+				_tree.WriteStruct(keySlice, structure);
+			}
+
+			public void Dispose()
+			{
 			}
 		}
 

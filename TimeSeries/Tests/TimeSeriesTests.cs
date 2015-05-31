@@ -72,7 +72,7 @@ namespace TimeSeries.Tests
 							End = DateTime.MaxValue
 						});
 
-					var money = result.Single().ToArray();
+					var money = result.ToArray();
 					Assert.Equal(3, money.Length);
 					Assert.Equal("Money", money[0].DebugKey);
 					Assert.Equal("Money", money[1].DebugKey);
@@ -220,9 +220,9 @@ namespace TimeSeries.Tests
 					var money = result[1].ToArray();
 
 					Assert.Equal(3, time.Length);
-					Assert.Equal(10, time[0].Value);
-					Assert.Equal(19, time[1].Value);
-					Assert.Equal(50, time[2].Value);
+					Assert.Equal(double.NaN, time[0].Value);
+					Assert.Equal(double.NaN, time[1].Value);
+					Assert.Equal(double.NaN, time[2].Value);
 					Assert.Equal("Time", time[0].DebugKey);
 					Assert.Equal(TimeSpan.FromSeconds(3), time[0].Duration);
 					Assert.Equal(TimeSpan.FromSeconds(3), time[1].Duration);
@@ -245,9 +245,9 @@ namespace TimeSeries.Tests
 
 
 					Assert.Equal(3, money.Length);
-					Assert.Equal(54, money[0].Value);
-					Assert.Equal(546, money[1].Value);
-					Assert.Equal(130, money[2].Value);
+					Assert.Equal(double.NaN, money[0].Value);
+					Assert.Equal(double.NaN, money[1].Value);
+					Assert.Equal(double.NaN, money[2].Value);
 					Assert.Equal("Money", money[0].DebugKey);
 					Assert.Equal(TimeSpan.FromMinutes(3), money[0].Duration);
 					Assert.Equal(TimeSpan.FromMinutes(3), money[1].Duration);
