@@ -93,11 +93,16 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="KeyValueStateMachine.cs" />
+    <Compile Include="PeriodType.cs" />
     <Compile Include="PointCandleSchema.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RollupRange.cs" />
+    <Compile Include="Tests\TimeSeriesRollupsOutOfRange.cs" />
+    <Compile Include="Tests\TimeSeriesRollupsStartedNotAtMidnight.cs" />
     <Compile Include="Tests\TimeSeriesRollups.cs" />
     <Compile Include="Tests\TimeSeriesTests.cs" />
+    <Compile Include="TimeSeriesPeriodDuration.cs" />
     <Compile Include="TimeSeriesQuery.cs" />
     <Compile Include="TimeSeriesServer.cs" />
     <Compile Include="TimeSeriesStorage.cs" />

@@ -122,7 +122,7 @@ namespace TimeSeries
 							Key = "views/en/Time", 
 							Start = start.AddYears(-1), 
 							End = start.AddYears(1).AddDays(1), 
-							PeriodDuration = TimeSpan.FromHours(6),
+							PeriodDuration = TimeSeriesPeriodDuration.Hours(6),
 						},
 						new TimeSeriesQuery {Key = "sizes/en/Time", Start = DateTime.MinValue, End = DateTime.MaxValue})
 						)

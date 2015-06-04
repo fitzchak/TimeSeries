@@ -10,8 +10,6 @@ namespace TimeSeries
 		
 		public DateTime End { get; set; }
 		
-		public bool GenerateCandles { get; set; }
-
-		public TimeSpan? PeriodDuration { get; set; }
+		public TimeSeriesPeriodDuration PeriodDuration { get; set; }
 	}
 }

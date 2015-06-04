@@ -5,11 +5,11 @@ using Xunit;
 
 namespace TimeSeries.Tests
 {
-	public class TimeSeriesRollups
+	public class TimeSeriesRollupsStartedNotAtMidnight
 	{
 		private static void WriteTestData(TimeSeriesStorage tss)
 		{
-			var start = new DateTime(2015, 4, 1, 0, 0, 0);
+			var start = new DateTime(2015, 4, 1, 2, 0, 0);
 			var data = new[]
 			{
 				new {Key = "Time", At = start, Value = 10},
@@ -31,6 +31,14 @@ namespace TimeSeries.Tests
 				{
 					writer.Append(item.Key, item.At, item.Value);
 				}
+			
+				int value = 0;
+				for (int i = 0; i < 13; i++)
+				{
+					writer.Append("Time", start.AddHours(3 + i), value++);
+					writer.Append("Is", start.AddHours(3 + i), value++);
+					writer.Append("Money", start.AddHours(3 + i), value++);
+				}
 				writer.Commit();
 			}
 		}
@@ -44,7 +52,7 @@ namespace TimeSeries.Tests
 			{
 				WriteTestData(tss);
 
-				var start = new DateTime(2015, 4, 1, 0, 0, 0);
+				var start = new DateTime(2015, 4, 1, 2, 0, 0);
 				var r = tss.CreateReader();
 				var result = r.Query(
 					new TimeSeriesQuery
@@ -153,7 +161,7 @@ namespace TimeSeries.Tests
 			{
 				WriteTestData(tss);
 
-				var start = new DateTime(2015, 4, 1, 0, 0, 0);
+				var start = new DateTime(2015, 4, 1, 2, 0, 0);
 				var r = tss.CreateReader();
 				var money = r.Query(
 					new TimeSeriesQuery
@@ -161,7 +169,7 @@ namespace TimeSeries.Tests
 						Key = "Money",
 						Start = start.AddYears(-1),
 						End = start.AddYears(1),
-						PeriodDuration = TimeSeriesPeriodDuration.Hours(2),
+						PeriodDuration = TimeSeriesPeriodDuration.Hours(3),
 					}).ToArray();
 
 				Assert.Equal(2, money.Length);
@@ -188,7 +196,7 @@ namespace TimeSeries.Tests
 				using (var writer = tss.CreateWriter())
 				{
 					int value = 0;
-					for (int i = 0; i < 4; i++)
+					for (int i = 13; i < 27; i++)
 					{
 						writer.Append("Time", start.AddHours(3 + i), value++);
 						writer.Append("Is", start.AddHours(3 + i), value++);
