@@ -54,20 +54,20 @@ namespace TimeSeries.Tests
 
 				var start = new DateTime(2015, 4, 1, 2, 0, 0);
 				var r = tss.CreateReader();
-				var result = r.Query(
-					new TimeSeriesQuery
+				var result = r.QueryRollup(
+					new TimeSeriesRollupQuery
 					{
 						Key = "Time",
 						Start = start.AddYears(-1),
 						End = start.AddYears(1),
-						PeriodDuration = TimeSeriesPeriodDuration.Minutes(90),
+						Duration = PeriodDuration.Minutes(90),
 					},
-					new TimeSeriesQuery
+					new TimeSeriesRollupQuery
 					{
 						Key = "Money",
 						Start = start.AddYears(-1),
 						End = start.AddYears(1),
-						PeriodDuration = TimeSeriesPeriodDuration.Hours(2),
+						Duration = PeriodDuration.Hours(2),
 					}).ToArray();
 
 				Assert.Equal(2, result.Length);
@@ -75,47 +75,45 @@ namespace TimeSeries.Tests
 				var money = result[1].ToArray();
 
 				Assert.Equal(2, time.Length);
-				Assert.Equal(new DateTime(2015, 4, 1, 0, 0, 0), time[0].At);
-				Assert.Equal(new DateTime(2015, 4, 1, 2, 0, 0), time[1].At);
-				Assert.Equal(29, time[0].Candle.Sum);
-				Assert.Equal(50, time[1].Candle.Sum);
-				Assert.Equal(double.NaN, time[0].Value);
-				Assert.Equal(double.NaN, time[1].Value);
+				Assert.Equal(new DateTime(2015, 4, 1, 0, 0, 0), time[0].StartAt);
+				Assert.Equal(new DateTime(2015, 4, 1, 2, 0, 0), time[1].StartAt);
+				Assert.Equal(29, time[0].Sum);
+				Assert.Equal(50, time[1].Sum);
 				Assert.Equal("Time", time[0].DebugKey);
 				Assert.Equal("Time", time[1].DebugKey);
 
 				Assert.Equal(2, money.Length);
 				Assert.Equal("Money", money[0].DebugKey);
 				Assert.Equal("Money", money[1].DebugKey);
-				Assert.Equal(300, money[0].Candle.Sum / money[0].Candle.Volume);
-				Assert.Equal(130, money[1].Candle.Sum / money[1].Candle.Volume);
-				Assert.Equal(TimeSeriesPeriodDuration.Hours(2), money[0].Duration);
-				Assert.Equal(TimeSeriesPeriodDuration.Hours(2), money[1].Duration);
-				Assert.Equal(2, money[0].Candle.Volume);
-				Assert.Equal(1, money[1].Candle.Volume);
-				Assert.Equal(54, money[0].Candle.Open);
-				Assert.Equal(130, money[1].Candle.Open);
-				Assert.Equal(546, money[0].Candle.Close);
-				Assert.Equal(130, money[1].Candle.Close);
-				Assert.Equal(54, money[0].Candle.Low);
-				Assert.Equal(130, money[1].Candle.Low);
-				Assert.Equal(546, money[0].Candle.High);
-				Assert.Equal(130, money[1].Candle.High);
+				Assert.Equal(300, money[0].Sum / money[0].Volume);
+				Assert.Equal(130, money[1].Sum / money[1].Volume);
+				Assert.Equal(PeriodDuration.Hours(2), money[0].Duration);
+				Assert.Equal(PeriodDuration.Hours(2), money[1].Duration);
+				Assert.Equal(2, money[0].Volume);
+				Assert.Equal(1, money[1].Volume);
+				Assert.Equal(54, money[0].Open);
+				Assert.Equal(130, money[1].Open);
+				Assert.Equal(546, money[0].Close);
+				Assert.Equal(130, money[1].Close);
+				Assert.Equal(54, money[0].Low);
+				Assert.Equal(130, money[1].Low);
+				Assert.Equal(546, money[0].High);
+				Assert.Equal(130, money[1].High);
 
-				result = r.Query(
-					new TimeSeriesQuery
+				result = r.QueryRollup(
+					new TimeSeriesRollupQuery
 					{
 						Key = "Time",
 						Start = start.AddYears(-1),
 						End = start.AddYears(1),
-						PeriodDuration = TimeSeriesPeriodDuration.Minutes(90),
+						Duration = PeriodDuration.Minutes(90),
 					},
-					new TimeSeriesQuery
+					new TimeSeriesRollupQuery
 					{
 						Key = "Money",
 						Start = start.AddYears(-1),
 						End = start.AddYears(1),
-						PeriodDuration = TimeSeriesPeriodDuration.Hours(2),
+						Duration = PeriodDuration.Hours(2),
 					}).ToArray();
 
 				Assert.Equal(2, result.Length);
@@ -123,34 +121,32 @@ namespace TimeSeries.Tests
 				money = result[1].ToArray();
 
 				Assert.Equal(2, time.Length);
-				Assert.Equal(new DateTime(2015, 4, 1, 0, 0, 0), time[0].At);
-				Assert.Equal(new DateTime(2015, 4, 1, 2, 0, 0), time[1].At);
-				Assert.Equal(29, time[0].Candle.Sum);
-				Assert.Equal(50, time[1].Candle.Sum);
-				Assert.Equal(TimeSeriesPeriodDuration.Minutes(90), time[0].Duration);
-				Assert.Equal(TimeSeriesPeriodDuration.Minutes(90), time[1].Duration);
-				Assert.Equal(double.NaN, time[0].Value);
-				Assert.Equal(double.NaN, time[1].Value);
+				Assert.Equal(new DateTime(2015, 4, 1, 0, 0, 0), time[0].StartAt);
+				Assert.Equal(new DateTime(2015, 4, 1, 2, 0, 0), time[1].StartAt);
+				Assert.Equal(29, time[0].Sum);
+				Assert.Equal(50, time[1].Sum);
+				Assert.Equal(PeriodDuration.Minutes(90), time[0].Duration);
+				Assert.Equal(PeriodDuration.Minutes(90), time[1].Duration);
 				Assert.Equal("Time", time[0].DebugKey);
 				Assert.Equal("Time", time[1].DebugKey);
 
 				Assert.Equal(2, money.Length);
 				Assert.Equal("Money", money[0].DebugKey);
 				Assert.Equal("Money", money[1].DebugKey);
-				Assert.Equal(300, money[0].Candle.Sum / money[0].Candle.Volume);
-				Assert.Equal(130, money[1].Candle.Sum / money[1].Candle.Volume);
-				Assert.Equal(TimeSeriesPeriodDuration.Hours(2), money[0].Duration);
-				Assert.Equal(TimeSeriesPeriodDuration.Hours(2), money[1].Duration);
-				Assert.Equal(2, money[0].Candle.Volume);
-				Assert.Equal(1, money[1].Candle.Volume);
-				Assert.Equal(54, money[0].Candle.Open);
-				Assert.Equal(130, money[1].Candle.Open);
-				Assert.Equal(546, money[0].Candle.Close);
-				Assert.Equal(130, money[1].Candle.Close);
-				Assert.Equal(54, money[0].Candle.Low);
-				Assert.Equal(130, money[1].Candle.Low);
-				Assert.Equal(546, money[0].Candle.High);
-				Assert.Equal(130, money[1].Candle.High);
+				Assert.Equal(300, money[0].Sum / money[0].Volume);
+				Assert.Equal(130, money[1].Sum / money[1].Volume);
+				Assert.Equal(PeriodDuration.Hours(2), money[0].Duration);
+				Assert.Equal(PeriodDuration.Hours(2), money[1].Duration);
+				Assert.Equal(2, money[0].Volume);
+				Assert.Equal(1, money[1].Volume);
+				Assert.Equal(54, money[0].Open);
+				Assert.Equal(130, money[1].Open);
+				Assert.Equal(546, money[0].Close);
+				Assert.Equal(130, money[1].Close);
+				Assert.Equal(54, money[0].Low);
+				Assert.Equal(130, money[1].Low);
+				Assert.Equal(546, money[0].High);
+				Assert.Equal(130, money[1].High);
 			}
 		}
 
@@ -163,34 +159,32 @@ namespace TimeSeries.Tests
 
 				var start = new DateTime(2015, 4, 1, 2, 0, 0);
 				var r = tss.CreateReader();
-				var money = r.Query(
-					new TimeSeriesQuery
+				var money = r.QueryRollup(
+					new TimeSeriesRollupQuery
 					{
 						Key = "Money",
 						Start = start.AddYears(-1),
 						End = start.AddYears(1),
-						PeriodDuration = TimeSeriesPeriodDuration.Hours(3),
+						Duration = PeriodDuration.Hours(3),
 					}).ToArray();
 
 				Assert.Equal(2, money.Length);
 				Assert.Equal("Money", money[0].DebugKey);
 				Assert.Equal("Money", money[1].DebugKey);
-				Assert.Equal(600, money[0].Candle.Sum);
-				Assert.Equal(130, money[1].Candle.Sum);
-				Assert.Equal(TimeSeriesPeriodDuration.Hours(2), money[0].Duration);
-				Assert.Equal(TimeSeriesPeriodDuration.Hours(2), money[1].Duration);
-				Assert.Equal(2, money[0].Candle.Volume);
-				Assert.Equal(1, money[1].Candle.Volume);
-				Assert.Equal(54, money[0].Candle.Open);
-				Assert.Equal(130, money[1].Candle.Open);
-				Assert.Equal(546, money[0].Candle.Close);
-				Assert.Equal(130, money[1].Candle.Close);
-				Assert.Equal(54, money[0].Candle.Low);
-				Assert.Equal(130, money[1].Candle.Low);
-				Assert.Equal(546, money[0].Candle.High);
-				Assert.Equal(130, money[1].Candle.High);
-				Assert.Equal(double.NaN, money[0].Value);
-				Assert.Equal(double.NaN, money[1].Value);
+				Assert.Equal(600, money[0].Sum);
+				Assert.Equal(130, money[1].Sum);
+				Assert.Equal(PeriodDuration.Hours(2), money[0].Duration);
+				Assert.Equal(PeriodDuration.Hours(2), money[1].Duration);
+				Assert.Equal(2, money[0].Volume);
+				Assert.Equal(1, money[1].Volume);
+				Assert.Equal(54, money[0].Open);
+				Assert.Equal(130, money[1].Open);
+				Assert.Equal(546, money[0].Close);
+				Assert.Equal(130, money[1].Close);
+				Assert.Equal(54, money[0].Low);
+				Assert.Equal(130, money[1].Low);
+				Assert.Equal(546, money[0].High);
+				Assert.Equal(130, money[1].High);
 
 
 				using (var writer = tss.CreateWriter())
@@ -205,34 +199,32 @@ namespace TimeSeries.Tests
 					writer.Commit();
 				}
 
-				money = r.Query(
-					new TimeSeriesQuery
+				money = r.QueryRollup(
+					new TimeSeriesRollupQuery
 					{
 						Key = "Money",
 						Start = start.AddYears(-1),
 						End = start.AddYears(1),
-						PeriodDuration = TimeSeriesPeriodDuration.Hours(2),
+						Duration = PeriodDuration.Hours(2),
 					}).ToArray();
 
 				Assert.Equal(4, money.Length);
 				Assert.Equal("Money", money[0].DebugKey);
 				Assert.Equal("Money", money[1].DebugKey);
-				Assert.Equal(300, money[0].Candle.Sum);
-				Assert.Equal(130, money[1].Candle.Sum);
-				Assert.Equal(TimeSeriesPeriodDuration.Hours(2), money[0].Duration);
-				Assert.Equal(TimeSeriesPeriodDuration.Hours(2), money[1].Duration);
-				Assert.Equal(2, money[0].Candle.Volume);
-				Assert.Equal(1, money[1].Candle.Volume);
-				Assert.Equal(54, money[0].Candle.Open);
-				Assert.Equal(130, money[1].Candle.Open);
-				Assert.Equal(546, money[0].Candle.Close);
-				Assert.Equal(130, money[1].Candle.Close);
-				Assert.Equal(54, money[0].Candle.Low);
-				Assert.Equal(130, money[1].Candle.Low);
-				Assert.Equal(546, money[0].Candle.High);
-				Assert.Equal(130, money[1].Candle.High);
-				Assert.Equal(double.NaN, money[0].Value);
-				Assert.Equal(double.NaN, money[1].Value);
+				Assert.Equal(300, money[0].Sum);
+				Assert.Equal(130, money[1].Sum);
+				Assert.Equal(PeriodDuration.Hours(2), money[0].Duration);
+				Assert.Equal(PeriodDuration.Hours(2), money[1].Duration);
+				Assert.Equal(2, money[0].Volume);
+				Assert.Equal(1, money[1].Volume);
+				Assert.Equal(54, money[0].Open);
+				Assert.Equal(130, money[1].Open);
+				Assert.Equal(546, money[0].Close);
+				Assert.Equal(130, money[1].Close);
+				Assert.Equal(54, money[0].Low);
+				Assert.Equal(130, money[1].Low);
+				Assert.Equal(546, money[0].High);
+				Assert.Equal(130, money[1].High);
 			}
 		}
 	}

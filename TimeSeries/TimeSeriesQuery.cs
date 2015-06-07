@@ -9,7 +9,10 @@ namespace TimeSeries
 		public DateTime Start { get; set; }
 		
 		public DateTime End { get; set; }
-		
-		public TimeSeriesPeriodDuration PeriodDuration { get; set; }
+	}
+
+	public class TimeSeriesRollupQuery : TimeSeriesQuery
+	{
+		public PeriodDuration Duration { get; set; }
 	}
 }

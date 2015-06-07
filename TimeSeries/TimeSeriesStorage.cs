@@ -52,36 +52,12 @@ namespace TimeSeries
 
 		public class Point
 		{
-			private double _value;
 #if DEBUG
 			public string DebugKey { get; set; }
 #endif
 			public DateTime At { get; set; }
 
-			public double Value
-			{
-				get { return _value; }
-				set { _value = value; }
-			}
-
-			public TimeSeriesPeriodDuration Duration { get; set; }
-
-			public Candle Candle { get; set; }
-		}
-
-		public class Candle
-		{
-			public double High { get; set; }
-			
-			public double Low { get; set; }
-			
-			public double Open { get; set; }
-			
-			public double Close { get; set; }
-
-			public int Volume { get; set; }
-
-			public double Sum { get; set; }
+			public double Value { get; set; }
 		}
 
 		public class Reader : IDisposable
@@ -101,7 +77,7 @@ namespace TimeSeries
 
 			public IEnumerable<Point> Query(TimeSeriesQuery query)
 			{
-				return GetQueryResult(query);
+				return GetRawQueryResult(query);
 			}
 
 			public IEnumerable<Point>[] Query(params TimeSeriesQuery[] queries)
@@ -109,184 +85,163 @@ namespace TimeSeries
 				var result = new IEnumerable<Point>[queries.Length];
 				for (int i = 0; i < queries.Length; i++)
 				{
-					result[i] = GetQueryResult(queries[i]);
+					result[i] = GetRawQueryResult(queries[i]);
 				}
 				return result;
 			}
 
-			private IEnumerable<Point> GetQueryResult(TimeSeriesQuery query)
+			public IEnumerable<Range> QueryRollup(TimeSeriesRollupQuery query)
 			{
-				if (query.PeriodDuration == null)
-				{
-					var result = GetRawQueryResult(query, _tree);
-					return result;
-				}
+				return GetQueryRollup(query);
+			}
 
-				switch (query.PeriodDuration.Type)
+			public IEnumerable<Range>[] QueryRollup(params TimeSeriesRollupQuery[] queries)
+			{
+				var result = new IEnumerable<Range>[queries.Length];
+				for (int i = 0; i < queries.Length; i++)
 				{
-					case PeriodType.Milliseconds:
-						break;
+					result[i] = GetQueryRollup(queries[i]);
+				}
+				return result;
+			}
+
+			private IEnumerable<Range> GetQueryRollup(TimeSeriesRollupQuery query)
+			{
+				switch (query.Duration.Type)
+				{
 					case PeriodType.Seconds:
+						if (query.Start.Millisecond != 0)
+							throw new InvalidOperationException("When querying a roll up by seconds, you cannot specify milliseconds");
+						if (query.End.Millisecond != 0)
+							throw new InvalidOperationException("When querying a roll up by seconds, you cannot specify milliseconds");
+						if (query.Start.Second % query.Duration.Duration != 0)
+							throw new InvalidOperationException(string.Format("Cannot create a roll up by {0} {1} as it cannot be divided to candles that starts from midnight", query.Duration.Duration, query.Duration.Type));
+						if (query.End.Second % query.Duration.Duration != 0)
+							throw new InvalidOperationException(string.Format("Cannot create a roll up by {0} {1} as it cannot be divided to candles that ends in midnight", query.Duration.Duration, query.Duration.Type));
 						break;
 					case PeriodType.Minutes:
+						if (query.Start.Second != 0 || query.Start.Millisecond != 0)
+							throw new InvalidOperationException("When querying a roll up by minutes, you cannot specify seconds or milliseconds");
+						if (query.End.Second != 0 || query.End.Millisecond != 0)
+							throw new InvalidOperationException("When querying a roll up by minutes, you cannot specify seconds or milliseconds");
+						if (query.Start.Minute % query.Duration.Duration != 0)
+							throw new InvalidOperationException(string.Format("Cannot create a roll up by {0} {1} as it cannot be divided to candles that starts from midnight", query.Duration.Duration, query.Duration.Type));
+						if (query.End.Minute % query.Duration.Duration != 0)
+							throw new InvalidOperationException(string.Format("Cannot create a roll up by {0} {1} as it cannot be divided to candles that ends in midnight", query.Duration.Duration, query.Duration.Type));
 						break;
 					case PeriodType.Hours:
 						if (query.Start.Minute != 0 || query.Start.Second != 0 || query.Start.Millisecond != 0)
 							throw new InvalidOperationException("When querying a roll up by hours, you cannot specify minutes, seconds or milliseconds");
-						if (query.Start.Hour % query.PeriodDuration.Duration != 0)
-							throw new InvalidOperationException(string.Format("Cannot create a roll up by {0} {1} as it cannot be divided to candles that starts from midnight", query.PeriodDuration.Duration, query.PeriodDuration.Type));
 						if (query.End.Minute != 0 || query.End.Second != 0 || query.End.Millisecond != 0)
 							throw new InvalidOperationException("When querying a roll up by hours, you cannot specify minutes, seconds or milliseconds");
-						if (query.End.Hour%query.PeriodDuration.Duration != 0)
-							throw new InvalidOperationException(string.Format("Cannot create a roll up by {0} {1} as it cannot be divided to candles that ends in midnight", query.PeriodDuration.Duration, query.PeriodDuration.Type));
+						if (query.Start.Hour%query.Duration.Duration != 0)
+							throw new InvalidOperationException(string.Format("Cannot create a roll up by {0} {1} as it cannot be divided to candles that starts from midnight", query.Duration.Duration, query.Duration.Type));
+						if (query.End.Hour%query.Duration.Duration != 0)
+							throw new InvalidOperationException(string.Format("Cannot create a roll up by {0} {1} as it cannot be divided to candles that ends in midnight", query.Duration.Duration, query.Duration.Type));
 						break;
 					case PeriodType.Days:
+						if (query.Start.Hour != 0 || query.Start.Minute != 0 || query.Start.Second != 0 || query.Start.Millisecond != 0)
+							throw new InvalidOperationException("When querying a roll up by hours, you cannot specify hours, minutes, seconds or milliseconds");
+						if (query.End.Hour != 0 || query.End.Minute != 0 || query.End.Second != 0 || query.End.Millisecond != 0)
+							throw new InvalidOperationException("When querying a roll up by hours, you cannot specify hours, minutes, seconds or milliseconds");
+						if (query.Start.Day%query.Duration.Duration != 0)
+							throw new InvalidOperationException(string.Format("Cannot create a roll up by {0} {1} as it cannot be divided to candles that starts from midnight", query.Duration.Duration, query.Duration.Type));
+						if (query.End.Day%query.Duration.Duration != 0)
+							throw new InvalidOperationException(string.Format("Cannot create a roll up by {0} {1} as it cannot be divided to candles that ends in midnight", query.Duration.Duration, query.Duration.Type));
 						break;
 					case PeriodType.Weeks:
-						break;
 					case PeriodType.Months:
-						break;
 					case PeriodType.Years:
-						break;
 					default:
 						throw new ArgumentOutOfRangeException();
 				}
 
+
 				using (var periodTx = _storage._storageEnvironment.NewTransaction(TransactionFlags.ReadWrite))
 				{
-					var periodTree = periodTx.State.GetTree(periodTx, "period_" + query.PeriodDuration.Type + "-" + query.PeriodDuration.Duration);
-
-					/*
-					 * preiodTreeIterator
-					 * rawTreeIterator
-					 foreach(var range in new Range(startTime, endTime, duration))
-					 {
-						// seek period tree iterator, if found, add and move to the next
-					    // seek tree iterator, if found, sum, add to period tree, move next
-					    // if not found, create empty periods until the end or the next valid period
-					 }
-					 */ 
-
-
-					var result = GetRawQueryResult(query, periodTree).ToArray();
-					if (result.Any())
-					{
-						return result;
-					}
-
-					var computedResult = GetRawQueryResult(query, _tree).ToArray();
-					var computedResultArray = AnalyzePeriodDuration(computedResult, query).ToArray();
-
+					var periodTree = periodTx.State.GetTree(periodTx, "period_" + query.Duration.Type + "-" + query.Duration.Duration);
 					using (var writer = new RollupWriter(periodTree))
 					{
-						foreach (var point in computedResultArray)
+						using (var periodTreeIterator = periodTree.Iterate())
+						using (var rawTreeIterator = _tree.Iterate())
 						{
-							writer.Append(query.Key, point.At, point.Candle);
-						}
-						periodTx.Commit();
-					}
+							var keyBytesLen = Encoding.UTF8.GetByteCount(query.Key) + sizeof (long);
+							var startKeyWriter = new SliceWriter(keyBytesLen);
+							startKeyWriter.WriteString(query.Key);
+							var prefixKey = startKeyWriter.CreateSlice();
 
-					return computedResultArray;
+							periodTreeIterator.RequiredPrefix = prefixKey;
+							rawTreeIterator.RequiredPrefix = prefixKey;
+
+							foreach (var range in GetRanges(query))
+							{
+								var seekWriter = new SliceWriter(keyBytesLen);
+								seekWriter.WriteString(query.Key);
+								seekWriter.WriteBigEndian(range.StartAt.Ticks);
+								var seekSlice = seekWriter.CreateSlice();
+
+								// seek period tree iterator, if found exact match!!, add and move to the next
+								if (periodTreeIterator.Seek(seekSlice)
+								    && periodTreeIterator.CurrentKey.KeyLength == keyBytesLen)
+								{
+									var keyReader = periodTreeIterator.CurrentKey.CreateReader();
+									keyReader.Skip(keyBytesLen - sizeof (long));
+									var ticks = keyReader.ReadBigEndianInt64();
+									if (ticks == range.StartAt.Ticks)
+									{
+										var structureReader = periodTreeIterator.ReadStructForCurrent(RollupWriter.RangeSchema);
+										range.High = structureReader.ReadDouble(PointCandleSchema.High);
+										range.Low = structureReader.ReadDouble(PointCandleSchema.Low);
+										range.Open = structureReader.ReadDouble(PointCandleSchema.Open);
+										range.Close = structureReader.ReadDouble(PointCandleSchema.Close);
+										range.Sum = structureReader.ReadDouble(PointCandleSchema.Sum);
+										range.Volume = structureReader.ReadInt(PointCandleSchema.Volume);
+										yield return range;
+										continue;
+									}
+								}
+
+								// seek tree iterator, if found note don't go to next range!!, sum, add to period tree, move next
+								if (range.StartAt.Minute == 0 && range.StartAt.Second == 0)
+								{
+									
+								}
+								if (rawTreeIterator.Seek(seekSlice))
+								{
+									GetAllPointsForRange(rawTreeIterator, keyBytesLen, range);
+								}
+
+								// if not found, create empty periods until the end or the next valid period
+								/*if (range.Volume == 0)
+								{
+								}*/
+
+								writer.Append(query.Key, range.StartAt, range);
+								yield return range;
+							}
+						}
+					}
+					periodTx.Commit();
 				}
 			}
 
-			private IEnumerable<Point> AnalyzePeriodDuration(Point[] result, TimeSeriesQuery query)
+			private void GetAllPointsForRange(TreeIterator rawTreeIterator, int keyBytesLen, Range range)
 			{
-				if (result.Length == 0)
-					throw new InvalidOperationException("Debug: No results. Why?");
+				var endTicks = range.Duration.AddToDateTime(range.StartAt).Ticks;
+				var buffer = new byte[sizeof(double)];
+				Point firstPoint = null;
 
-				var periodStart = query.Start;
-				var nextPeriodStart = query.PeriodDuration.AddToDateTime(periodStart);
-				Point periodPoint = null;
-				int count = 0;
-				for (int i = 0; i < result.Length; i++)
-				{
-					var point = result[i];
-					if (point.At >= nextPeriodStart)
-					{
-						if (periodPoint == null)
-						{
-							var resultPoint = NewPoint(point, query.PeriodDuration);
-							resultPoint.At = periodStart;
-							resultPoint.Value = double.NegativeInfinity;
-							yield return resultPoint;
-						}
-						else
-						{
-							yield return periodPoint;
-							count = 1;
-							periodPoint = null;
-						}
-						periodStart = nextPeriodStart;
-						nextPeriodStart = query.PeriodDuration.AddToDateTime(periodStart);
-					}
-					else
-					{
-						if (periodPoint == null)
-						{
-							count = 1;
-							periodPoint = SetupPointResult(point, query.PeriodDuration, 1);
-							continue;
-						}
-						else
-						{
-							periodPoint.Candle.High = Math.Max(periodPoint.Candle.High, point.Value);
-							periodPoint.Candle.Low = Math.Min(periodPoint.Candle.Low, point.Value);
-							periodPoint.Candle.Close = point.Value;
-							periodPoint.Candle.Volume = ++count;
-							periodPoint.Candle.Sum += point.Value;
-							periodPoint.Value = double.NaN;
-						}
-					}
-				}
-
-				if (periodPoint != null)
-				{
-					yield return periodPoint;
-				}
-
-				// Return empty ranges at the end
 				do
 				{
-					throw new NotImplementedException();
-				} while (true);
-			}
+					if (rawTreeIterator.CurrentKey.KeyLength != keyBytesLen) // avoid getting another key (A1, A10, etc)
+						return;
 
-			private Point NewPoint(Point point, TimeSeriesPeriodDuration duration)
-			{
-				return new Point
-				{
-#if DEBUG
-					DebugKey = point.DebugKey,
-#endif
-					At = point.At,
-					Value = double.NaN,
-					Duration = duration,
-				};
-			}
+					var keyReader = rawTreeIterator.CurrentKey.CreateReader();
+					keyReader.Skip(keyBytesLen - sizeof(long));
+					var ticks = keyReader.ReadBigEndianInt64();
+					if (ticks >= endTicks)
+						return;
 
-			private Point SetupPointResult(Point point, TimeSeriesPeriodDuration duration, int count)
-			{
-				var result = NewPoint(point, duration);
-				result.Candle = new Candle
-				{
-					Open = point.Value,
-					High = point.Value,
-					Low = point.Value,
-					Close = point.Value,
-					Volume = count,
-					Sum = point.Value,
-				};
-				return result;
-			}
-
-			private static IEnumerable<Point> GetRawQueryResult(TimeSeriesQuery query, Tree tree)
-			{
-				var isRawData = tree.Name == "data";
-				var buffer = new byte[sizeof(double)];
-
-				return IterateOnTree(query, tree, (it, keyReader, ticks) =>
-				{
 					var point = new Point
 					{
 #if DEBUG
@@ -295,28 +250,72 @@ namespace TimeSeries
 						At = new DateTime(ticks),
 					};
 
-					if (isRawData)
+					var reader = rawTreeIterator.CreateReaderForCurrent();
+					reader.Read(buffer, 0, sizeof(double));
+					point.Value = EndianBitConverter.Big.ToDouble(buffer, 0);
+
+					if (firstPoint == null)
 					{
-						var reader = it.CreateReaderForCurrent();
-						reader.Read(buffer, 0, sizeof(double));
-						point.Value = EndianBitConverter.Big.ToDouble(buffer, 0);
+						firstPoint = point;
+						range.Open = point.Value;
+						range.High = point.Value;
+						range.Low = point.Value;
+						range.Sum = point.Value;
+						range.Volume = 1;
 					}
 					else
 					{
-						var structureReader = it.ReadStructForCurrent(RollupWriter.CandleSchema);
-						var candle = new Candle
-						{
-							High = structureReader.ReadDouble(PointCandleSchema.High),
-							Low = structureReader.ReadDouble(PointCandleSchema.Low),
-							Open = structureReader.ReadDouble(PointCandleSchema.Open),
-							Close = structureReader.ReadDouble(PointCandleSchema.Close),
-							Sum = structureReader.ReadDouble(PointCandleSchema.Sum),
-							Volume = structureReader.ReadInt(PointCandleSchema.Volume),
-						};
-						point.Candle = candle;
-						point.Duration = query.PeriodDuration;
-						point.Value = double.NaN;
+						range.High = Math.Max(range.High, point.Value);
+						range.Low = Math.Min(range.Low, point.Value);
+						range.Sum += point.Value;
+						range.Volume += 1;
 					}
+
+					range.Close = point.Value;
+				} while (rawTreeIterator.MoveNext());
+			}
+
+			private IEnumerable<Range> GetRanges(TimeSeriesRollupQuery query)
+			{
+				var startAt = query.Start;
+				while (true)
+				{
+					var nextStartAt = query.Duration.AddToDateTime(startAt);
+					if (startAt == query.End)
+						yield break;
+					if (nextStartAt > query.End)
+					{
+						throw new InvalidOperationException("Debug: Duration is not aligned with the end of the range.");
+					}
+					yield return new Range
+					{
+#if DEBUG
+						DebugKey = query.Key,
+#endif
+						StartAt = startAt,
+						Duration = query.Duration,
+					};
+					startAt = nextStartAt;
+				}
+			}
+
+			private IEnumerable<Point> GetRawQueryResult(TimeSeriesQuery query)
+			{
+				var buffer = new byte[sizeof(double)];
+
+				return IterateOnTree(query, _tree, (it, keyReader, ticks) =>
+				{
+					var point = new Point
+					{
+#if DEBUG
+						DebugKey = keyReader.AsPartialSlice(sizeof (long)).ToString(),
+#endif
+						At = new DateTime(ticks),
+					};
+					
+					var reader = it.CreateReaderForCurrent();
+					reader.Read(buffer, 0, sizeof (double));
+					point.Value = EndianBitConverter.Big.ToDouble(buffer, 0);
 					return point;
 				});
 			}
@@ -460,11 +459,11 @@ namespace TimeSeries
 
 		public class RollupWriter : IDisposable
 		{
-			public static readonly StructureSchema<PointCandleSchema> CandleSchema;
+			public static readonly StructureSchema<PointCandleSchema> RangeSchema;
 
 			static RollupWriter()
 			{
-				CandleSchema = new StructureSchema<PointCandleSchema>()
+				RangeSchema = new StructureSchema<PointCandleSchema>()
 					.Add<double>(PointCandleSchema.High)
 					.Add<double>(PointCandleSchema.Low)
 					.Add<double>(PointCandleSchema.Open)
@@ -482,21 +481,21 @@ namespace TimeSeries
 				_tree = tree;
 			}
 
-			public void Append(string key, DateTime time, Candle candle)
+			public void Append(string key, DateTime time, Range range)
 			{
 				var sliceWriter = new SliceWriter(_keyBuffer);
 				sliceWriter.WriteString(key);
 				sliceWriter.WriteBigEndian(time.Ticks);
 				var keySlice = sliceWriter.CreateSlice();
 
-				var structure = new Structure<PointCandleSchema>(CandleSchema);
+				var structure = new Structure<PointCandleSchema>(RangeSchema);
 
-				structure.Set(PointCandleSchema.High, candle.High);
-				structure.Set(PointCandleSchema.Low, candle.Low);
-				structure.Set(PointCandleSchema.Open, candle.Open);
-				structure.Set(PointCandleSchema.Close, candle.Close);
-				structure.Set(PointCandleSchema.Sum, candle.Sum);
-				structure.Set(PointCandleSchema.Volume, candle.Volume);
+				structure.Set(PointCandleSchema.High, range.High);
+				structure.Set(PointCandleSchema.Low, range.Low);
+				structure.Set(PointCandleSchema.Open, range.Open);
+				structure.Set(PointCandleSchema.Close, range.Close);
+				structure.Set(PointCandleSchema.Sum, range.Sum);
+				structure.Set(PointCandleSchema.Volume, range.Volume);
 
 				_tree.WriteStruct(keySlice, structure);
 			}

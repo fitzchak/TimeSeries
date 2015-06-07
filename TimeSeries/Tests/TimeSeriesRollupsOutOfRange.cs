@@ -17,12 +17,12 @@ namespace TimeSeries.Tests
 				var r = tss.CreateReader();
 				Assert.Throws<InvalidOperationException>(() =>
 				{
-					r.Query(new TimeSeriesQuery
+					r.QueryRollup(new TimeSeriesRollupQuery
 					{
 						Key = "Time",
 						Start = start.AddYears(-1),
 						End = start.AddYears(1),
-						PeriodDuration = TimeSeriesPeriodDuration.Hours(3),
+						Duration = PeriodDuration.Hours(3),
 					}).ToArray();
 				});
 				
@@ -39,12 +39,12 @@ namespace TimeSeries.Tests
 				var r = tss.CreateReader();
 				Assert.Throws<InvalidOperationException>(() =>
 				{
-					r.Query(new TimeSeriesQuery
+					r.QueryRollup(new TimeSeriesRollupQuery
 					{
 						Key = "Time",
 						Start = start.AddYears(-1),
 						End = start.AddYears(1),
-						PeriodDuration = TimeSeriesPeriodDuration.Hours(2),
+						Duration = PeriodDuration.Hours(2),
 					}).ToArray();
 				});
 

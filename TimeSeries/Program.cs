@@ -117,12 +117,12 @@ namespace TimeSeries
 				using (var r = tss.CreateReader())
 				{
 					foreach (var result in r.Query(
-						new TimeSeriesQuery
+						new TimeSeriesRollupQuery
 						{
 							Key = "views/en/Time", 
 							Start = start.AddYears(-1), 
 							End = start.AddYears(1).AddDays(1), 
-							PeriodDuration = TimeSeriesPeriodDuration.Hours(6),
+							Duration = PeriodDuration.Hours(6),
 						},
 						new TimeSeriesQuery {Key = "sizes/en/Time", Start = DateTime.MinValue, End = DateTime.MaxValue})
 						)
