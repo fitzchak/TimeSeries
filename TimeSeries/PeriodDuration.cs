@@ -35,11 +35,6 @@ namespace TimeSeries
 			return new PeriodDuration(PeriodType.Days, duration);
 		}
 
-		public static PeriodDuration Weeks(int duration)
-		{
-			return new PeriodDuration(PeriodType.Weeks, duration);
-		}
-
 		public static PeriodDuration Months(int duration)
 		{
 			return new PeriodDuration(PeriodType.Months, duration);
@@ -84,8 +79,6 @@ namespace TimeSeries
 					return start.AddHours(Duration);
 				case PeriodType.Days:
 					return start.AddDays(Duration);
-				case PeriodType.Weeks:
-					return start.AddDays(Duration * 7);
 				case PeriodType.Months:
 					return start.AddMonths(Duration);
 				case PeriodType.Years:
@@ -107,7 +100,6 @@ namespace TimeSeries
 					return new DateTime(pointAt.Year, pointAt.Month, pointAt.Day, pointAt.Hour / Duration * Duration, 0, 0);
 				case PeriodType.Days:
 					return new DateTime(pointAt.Year, pointAt.Month, pointAt.Day, 0, 0, 0);
-				case PeriodType.Weeks:
 				case PeriodType.Months:
 				case PeriodType.Years:
 				default:

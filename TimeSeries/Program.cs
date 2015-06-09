@@ -136,7 +136,7 @@ namespace TimeSeries
 			}
 		}
 
-	private static void WriteTestData(TimeSeriesStorage tss)
+		private static void WriteTestData(TimeSeriesStorage tss)
 		{
 			var start = new DateTime(2015, 4, 1, 0, 0, 0);
 			var data = new[]

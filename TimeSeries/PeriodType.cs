@@ -6,7 +6,6 @@
 		Minutes,
 		Hours,
 		Days,
-		Weeks,
 		Months,
 		Years,
 	}
