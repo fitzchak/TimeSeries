@@ -101,7 +101,6 @@
     <Compile Include="RollupRange.cs" />
     <Compile Include="Tests\TimeSeriesRollupsOutOfRange.cs" />
     <Compile Include="Tests\TimeSeriesRollupsStartedNotAtMidnight.cs" />
-    <Compile Include="Tests\TimeSeriesRollups.cs" />
     <Compile Include="Tests\TimeSeriesTests.cs" />
     <Compile Include="PeriodDuration.cs" />
     <Compile Include="TimeSeriesQuery.cs" />

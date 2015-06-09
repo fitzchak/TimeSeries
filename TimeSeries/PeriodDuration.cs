@@ -1,4 +1,5 @@
 ﻿using System;
+using Voron.Util;
 
 namespace TimeSeries
 {
@@ -92,6 +93,33 @@ namespace TimeSeries
 				default:
 					throw new ArgumentOutOfRangeException();
 			}
+		}
+
+		public DateTime GetStartOfRangeForDateTime(DateTime pointAt)
+		{
+			switch (Type)
+			{
+				case PeriodType.Seconds:
+					return new DateTime(pointAt.Year, pointAt.Month, pointAt.Day, pointAt.Hour, pointAt.Minute, pointAt.Second / Duration * Duration);
+				case PeriodType.Minutes:
+					return new DateTime(pointAt.Year, pointAt.Month, pointAt.Day, pointAt.Hour, pointAt.Minute / Duration * Duration, 0);
+				case PeriodType.Hours:
+					return new DateTime(pointAt.Year, pointAt.Month, pointAt.Day, pointAt.Hour / Duration * Duration, 0, 0);
+				case PeriodType.Days:
+					return new DateTime(pointAt.Year, pointAt.Month, pointAt.Day, 0, 0, 0);
+				case PeriodType.Weeks:
+				case PeriodType.Months:
+				case PeriodType.Years:
+				default:
+					throw new ArgumentOutOfRangeException();
+			}
+		}
+
+		public static PeriodDuration ParseTreeName(string treeName)
+		{
+			var strings = treeName.Substring("period_".Length)
+				.Split('-');
+			return new PeriodDuration(GenericUtil.ParseEnum<PeriodType>(strings[0]), int.Parse(strings[1]));
 		}
 	}
 }

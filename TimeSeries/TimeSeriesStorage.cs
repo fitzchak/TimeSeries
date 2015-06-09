@@ -190,12 +190,15 @@ namespace TimeSeries
 									if (ticks == range.StartAt.Ticks)
 									{
 										var structureReader = periodTreeIterator.ReadStructForCurrent(RollupWriter.RangeSchema);
-										range.High = structureReader.ReadDouble(PointCandleSchema.High);
-										range.Low = structureReader.ReadDouble(PointCandleSchema.Low);
-										range.Open = structureReader.ReadDouble(PointCandleSchema.Open);
-										range.Close = structureReader.ReadDouble(PointCandleSchema.Close);
-										range.Sum = structureReader.ReadDouble(PointCandleSchema.Sum);
 										range.Volume = structureReader.ReadInt(PointCandleSchema.Volume);
+										if (range.Volume != 0)
+										{
+											range.High = structureReader.ReadDouble(PointCandleSchema.High);
+											range.Low = structureReader.ReadDouble(PointCandleSchema.Low);
+											range.Open = structureReader.ReadDouble(PointCandleSchema.Open);
+											range.Close = structureReader.ReadDouble(PointCandleSchema.Close);
+											range.Sum = structureReader.ReadDouble(PointCandleSchema.Sum);
+										}
 										yield return range;
 										continue;
 									}
@@ -413,7 +416,6 @@ namespace TimeSeries
 
 			public void Commit()
 			{
-				// WriteWhenThereIsNoFoundDataForRange
 				CleanRollupDataForRange();
 				_tx.Commit();
 			}
@@ -433,21 +435,21 @@ namespace TimeSeries
 						if (periodTree == null)
 							continue;
 
-						CleanDataFromPeriodTree(periodTree);
+						CleanDataFromPeriodTree(periodTree, PeriodDuration.ParseTreeName(treeName));
 					} while (it.MoveNext());
 				}
 			}
 
-			private void CleanDataFromPeriodTree(Tree periodTree)
+			private void CleanDataFromPeriodTree(Tree periodTree, PeriodDuration duration)
 			{
 				foreach (var rollupRange in rollupsToClear)
 				{
 					var keysToDelete = Reader.IterateOnTree(new TimeSeriesQuery
 					{
 						Key = rollupRange.Key,
-						Start = rollupRange.Value.Start,
-						End = rollupRange.Value.End,
-					}, periodTree, (iterator, keyReader, ticks) => iterator.CurrentKey);
+						Start = duration.GetStartOfRangeForDateTime(rollupRange.Value.Start),
+						End = duration.GetStartOfRangeForDateTime(rollupRange.Value.End),
+					}, periodTree, (iterator, keyReader, ticks) => iterator.CurrentKey).ToArray();
 
 					foreach (var key in keysToDelete)
 					{
@@ -464,12 +466,12 @@ namespace TimeSeries
 			static RollupWriter()
 			{
 				RangeSchema = new StructureSchema<PointCandleSchema>()
+					.Add<int>(PointCandleSchema.Volume)
 					.Add<double>(PointCandleSchema.High)
 					.Add<double>(PointCandleSchema.Low)
 					.Add<double>(PointCandleSchema.Open)
 					.Add<double>(PointCandleSchema.Close)
-					.Add<double>(PointCandleSchema.Sum)
-					.Add<int>(PointCandleSchema.Volume);
+					.Add<double>(PointCandleSchema.Sum);
 			}
 
 			private readonly Tree _tree;
@@ -490,12 +492,15 @@ namespace TimeSeries
 
 				var structure = new Structure<PointCandleSchema>(RangeSchema);
 
-				structure.Set(PointCandleSchema.High, range.High);
-				structure.Set(PointCandleSchema.Low, range.Low);
-				structure.Set(PointCandleSchema.Open, range.Open);
-				structure.Set(PointCandleSchema.Close, range.Close);
-				structure.Set(PointCandleSchema.Sum, range.Sum);
 				structure.Set(PointCandleSchema.Volume, range.Volume);
+				if (range.Volume != 0)
+				{
+					structure.Set(PointCandleSchema.High, range.High);
+					structure.Set(PointCandleSchema.Low, range.Low);
+					structure.Set(PointCandleSchema.Open, range.Open);
+					structure.Set(PointCandleSchema.Close, range.Close);
+					structure.Set(PointCandleSchema.Sum, range.Sum);
+				}
 
 				_tree.WriteStruct(keySlice, structure);
 			}
