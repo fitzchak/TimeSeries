@@ -388,7 +388,7 @@ namespace TimeSeries
 			private readonly byte[] keyBuffer = new byte[1024];
 			private readonly byte[] valBuffer = new byte[8];
 			private readonly Tree _tree;
-			private Dictionary<string, RollupRange> rollupsToClear = new Dictionary<string, RollupRange>();
+			private readonly Dictionary<string, RollupRange> _rollupsToClear = new Dictionary<string, RollupRange>();
 			private readonly bool _ignoreErrors;
 
 			public Writer(TimeSeriesStorage storage)
@@ -417,7 +417,7 @@ namespace TimeSeries
 				EndianBitConverter.Big.CopyBytes(value, valBuffer, 0);
 
 				RollupRange range;
-				if (rollupsToClear.TryGetValue(key, out range))
+				if (_rollupsToClear.TryGetValue(key, out range))
 				{
 					if (time > range.End)
 					{
@@ -430,7 +430,7 @@ namespace TimeSeries
 				}
 				else
 				{
-					rollupsToClear.Add(key, new RollupRange(time));
+					_rollupsToClear.Add(key, new RollupRange(time));
 				}
 				
 				_tree.Add(keySlice, valBuffer);
@@ -470,7 +470,7 @@ namespace TimeSeries
 
 			private void CleanDataFromPeriodTree(Tree periodTree, PeriodDuration duration)
 			{
-				foreach (var rollupRange in rollupsToClear)
+				foreach (var rollupRange in _rollupsToClear)
 				{
 					var keysToDelete = Reader.IterateOnTree(new TimeSeriesQuery
 					{
