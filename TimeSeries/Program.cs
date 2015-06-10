@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
@@ -79,10 +80,10 @@ namespace TimeSeries
 
 				// WriteTestData(tss);
 
-				/*var sp = Stopwatch.StartNew();
+				var sp = Stopwatch.StartNew();
 				ImportWikipedia(tss);
 				sp.Stop();
-				Console.WriteLine(sp.Elapsed);*/
+				Console.WriteLine(sp.Elapsed);
 
 				/*using (var tx = tss.StorageEnvironment.NewTransaction(TransactionFlags.Read))
 				{
@@ -112,27 +113,6 @@ namespace TimeSeries
 					}
 					long overall = free + used;
 				}*/
-
-				var start = new DateTime(2015, 4, 1, 0, 0, 0);
-				using (var r = tss.CreateReader())
-				{
-					foreach (var result in r.Query(
-						new TimeSeriesRollupQuery
-						{
-							Key = "views/en/Time", 
-							Start = start.AddYears(-1), 
-							End = start.AddYears(1).AddDays(1), 
-							Duration = PeriodDuration.Hours(6),
-						},
-						new TimeSeriesQuery {Key = "sizes/en/Time", Start = DateTime.MinValue, End = DateTime.MaxValue})
-						)
-					{
-						foreach (var point in result)
-						{
-							Console.WriteLine(point.DebugKey + ": " + point.At + " - " + point.Value);
-						}
-					}
-				}
 			}
 		}
 
@@ -216,7 +196,7 @@ namespace TimeSeries
 			{
 				Console.WriteLine("Importing " + fileIndex);
 
-				if (fileIndex > 2)
+				if (fileIndex > 20)
 					break;
 
 				var fileName = files[fileIndex];

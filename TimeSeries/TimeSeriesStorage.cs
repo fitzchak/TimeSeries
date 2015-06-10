@@ -23,7 +23,7 @@ namespace TimeSeries
 			using (var tx = _storageEnvironment.NewTransaction(TransactionFlags.ReadWrite))
 			{
 				var metadata = _storageEnvironment.CreateTree(tx, "$metadata");
-				_storageEnvironment.CreateTree(tx, "data", keysPrefixing: false);
+				_storageEnvironment.CreateTree(tx, "data", keysPrefixing: true);
 				var result = metadata.Read("id");
 				if (result == null) // new db
 				{
@@ -389,17 +389,28 @@ namespace TimeSeries
 			private readonly byte[] valBuffer = new byte[8];
 			private readonly Tree _tree;
 			private Dictionary<string, RollupRange> rollupsToClear = new Dictionary<string, RollupRange>();
+			private readonly bool _ignoreErrors;
 
 			public Writer(TimeSeriesStorage storage)
 			{
 				_tx = storage._storageEnvironment.NewTransaction(TransactionFlags.ReadWrite); 
 				_tree = _tx.State.GetTree(_tx, "data");
+				_ignoreErrors = true;
 			}
 
 			public void Append(string key, DateTime time, double value)
 			{
 				var sliceWriter = new SliceWriter(keyBuffer);
-				sliceWriter.WriteString(key);
+				try
+				{
+					sliceWriter.WriteString(key);
+				}
+				catch (ArgumentException)
+				{
+					if (_ignoreErrors)
+						return;
+					throw;
+				}
 				sliceWriter.WriteBigEndian(time.Ticks);
 				var keySlice = sliceWriter.CreateSlice();
 
